@@ -21,7 +21,13 @@ A Windows Forms application built using C# that manages:
 - Windows Forms
 - SQL Server
 
-## 🚀 How to Run
+## 🚀 Features
+- Manage people and drivers
+- Issue and renew licenses
+- Handle applications and tests
+- Search and filter system
+- 
+## ▶️ How to Run
 1. Open DVLD.sln in Visual Studio
 2. Build Solution
 3. Run (F5)

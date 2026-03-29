@@ -26,7 +26,7 @@ A Windows Forms application built using C# that manages:
 - Issue and renew licenses
 - Handle applications and tests
 - Search and filter system
-- 
+  
 ## ▶️ How to Run
 1. Open DVLD.sln in Visual Studio
 2. Build Solution

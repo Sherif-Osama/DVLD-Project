@@ -3,6 +3,7 @@ using DTO;
 using System;
 using System.Data;
 using System.Data.SqlClient;
+using System.Threading.Tasks;
 
 namespace DataAccessLayer
 {
@@ -24,13 +25,13 @@ namespace DataAccessLayer
         }
 
         // Reads data from SQL reader and maps it to a DTO object
-        private static ApplicationTypesDTO ReadTypeData(SqlCommand command)
+        private static async Task<ApplicationTypesDTO> ReadTypeDataAsync(SqlCommand command)
         {
             try
             {
-                using (SqlDataReader Reader = command.ExecuteReader())
+                using (SqlDataReader Reader = await command.ExecuteReaderAsync())
                 {
-                    if (Reader.Read())
+                    if (await Reader.ReadAsync())
                     {
                         return new ApplicationTypesDTO
                         {
@@ -47,17 +48,17 @@ namespace DataAccessLayer
         }
 
         // Returns all records from ApplicationTypes table
-        public static DataTable GetAllApplicationsTypes()
+        public static async Task<DataTable> GetAllApplicationsTypesAsync()
         {
             string Query = "SELECT * FROM ApplicationTypes";
             try
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
-                        return UtilitiesClass.ExecuteDataTable(Comd);
+                        return await UtilitiesClass.ExecuteDataTableAsync(Comd);
                     }
                 }
             }
@@ -65,18 +66,18 @@ namespace DataAccessLayer
         }
 
         // Finds an ApplicationType record by its ID
-        public static ApplicationTypesDTO Find(int ApplicationID)
+        public static async Task<ApplicationTypesDTO> FindAsync(int ApplicationID)
         {
             string Query = "SELECT * FROM ApplicationTypes WHERE ApplicationTypeID = @ApplicationID";
             try
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@ApplicationID", SqlDbType.Int).Value = ApplicationID;
-                        return ReadTypeData(Comd);
+                        return await ReadTypeDataAsync(Comd);
                     }
                 }
             }
@@ -84,18 +85,18 @@ namespace DataAccessLayer
         }
 
         // Finds an ApplicationType record by its title
-        public static ApplicationTypesDTO Find(string ApplicationTitle)
+        public static async Task<ApplicationTypesDTO> FindAsync(string ApplicationTitle)
         {
             string Query = "SELECT * FROM ApplicationTypes WHERE ApplicationTypeTitle = @ApplicationTitle";
             try
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@ApplicationTitle", SqlDbType.NVarChar).Value = ApplicationTitle;
-                        return ReadTypeData(Comd);
+                        return await ReadTypeDataAsync(Comd);
                     }
                 }
             }
@@ -103,7 +104,7 @@ namespace DataAccessLayer
         }
 
         // Updates an existing ApplicationType record in the database
-        public static bool UpdateApplicationsTypes(ApplicationTypesDTO ApplicationTypes)
+        public static async Task<bool> UpdateApplicationsTypesAsync(ApplicationTypesDTO ApplicationTypes)
         {
             string Query = @"UPDATE ApplicationTypes
                              SET
@@ -114,12 +115,12 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         SetParameters(Comd, ApplicationTypes);
 
-                       return UtilitiesClass.ExecuteNonQuery(Comd) > 0;
+                        return await UtilitiesClass.ExecuteNonQueryAsync(Comd) > 0;
                     }
                 }
             }

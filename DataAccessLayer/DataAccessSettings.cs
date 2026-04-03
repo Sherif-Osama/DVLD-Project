@@ -1,7 +1,7 @@
 ﻿using System.Configuration;
 namespace DataAccessLayer
 {
-    // Central class for database connection settings
+    // Central class for database connection Settings
     internal static class DataAccessSettings
     {
         // SQL Server connection string

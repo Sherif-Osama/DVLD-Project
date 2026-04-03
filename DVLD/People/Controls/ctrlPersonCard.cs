@@ -1,6 +1,7 @@
 ﻿using BusinessLayer;
 using DVLD.Properties;
 using System.IO;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace DVLD.People.Controls
@@ -20,9 +21,9 @@ namespace DVLD.People.Controls
         }
 
         // Load person data by ID
-        public void LoadPerson(int PersonID)
+        public async Task LoadPersonAsync(int PersonID)
         {
-            PersonInfo = ClsPerson.Find(PersonID);
+            PersonInfo = await ClsPerson.FindAsync(PersonID);
 
             if (PersonInfo == null)
             {
@@ -33,9 +34,9 @@ namespace DVLD.People.Controls
             SetPersonData();
         }
         // Load person data by National number
-        public void LoadPerson(string NationalNo)
+        public async Task LoadPersonAsync(string NationalNo)
         {
-            PersonInfo = ClsPerson.Find(NationalNo);
+            PersonInfo = await ClsPerson.FindAsync(NationalNo);
 
             if (PersonInfo == null)
             {
@@ -47,12 +48,11 @@ namespace DVLD.People.Controls
         }
 
         // Opens the edit form when the edit link is clicked
-        private void llEditPersonInfo_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        private async void llEditPersonInfo_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
             AddAndEditPerson EditPerson = new AddAndEditPerson(PersonID);
             // Refresh data after editing
-            EditPerson.Databake += LoadPerson;
-
+            EditPerson.Databake += async (PersonID) => await LoadPersonAsync(PersonID);
             EditPerson.ShowDialog();
         }
 

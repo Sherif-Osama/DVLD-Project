@@ -3,6 +3,7 @@ using DTO;
 using System;
 using System.Data;
 using System.Data.SqlClient;
+using System.Threading.Tasks;
 
 namespace DataAccessLayer
 {
@@ -10,13 +11,13 @@ namespace DataAccessLayer
     public static class ClsTestData
     {
         // Read a Test record from SqlDataReader and return as TestDTO.
-        private static TestDTO ReadTest(SqlCommand Comm)
+        private static async Task<TestDTO> ReadTestAsync(SqlCommand Comm)
         {
             try
             {
-                using (SqlDataReader Reader = Comm.ExecuteReader())
+                using (SqlDataReader Reader = await Comm.ExecuteReaderAsync())
                 {
-                    if (Reader.Read())
+                    if (await Reader.ReadAsync())
                     {
                         return new TestDTO
                         {
@@ -37,6 +38,8 @@ namespace DataAccessLayer
         // Add parameters to the command based on TestDTO values.
         private static void SetParameters(SqlCommand Cmd, TestDTO Test)
         {
+            if (Cmd.CommandText.Contains("@TestID"))
+                Cmd.Parameters.Add("@TestID", SqlDbType.Int).Value = Test.TestID;
             if (Cmd.CommandText.Contains("@TestAppointmentID"))
                 Cmd.Parameters.Add("@TestAppointmentID", SqlDbType.Int).Value = Test.TestAppointmentID;
             if (Cmd.CommandText.Contains("@TestResult"))
@@ -48,19 +51,19 @@ namespace DataAccessLayer
         }
 
         // Find a test by ID and return TestDTO (or null if not found).
-        public static TestDTO Find(int TestID)
+        public static async Task<TestDTO> FindAsync(int TestID)
         {
             string Query = @"SELECT *FROM Tests WHERE TestID = @TestID";
             try
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Cmd = new SqlCommand(Query, Conn))
                     {
                         Cmd.Parameters.Add("@TestID", SqlDbType.Int).Value = TestID;
 
-                        return ReadTest(Cmd);
+                        return await ReadTestAsync(Cmd);
                     }
                 }
             }
@@ -68,7 +71,7 @@ namespace DataAccessLayer
         }
 
         // Count passed tests for a given application ID.
-        public static int GetPassedTestsCountForApplication(int LocalDrivingLicenseApplicationID)
+        public static async Task<int> GetPassedTestsCountForApplicationAsync(int LocalDrivingLicenseApplicationID)
         {
             string Query = @"SELECT COUNT(*) FROM Tests T
                            INNER JOIN TestAppointments TA ON T.TestAppointmentID = TA.TestAppointmentID
@@ -78,12 +81,12 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Cmd = new SqlCommand(Query, Conn))
                     {
                         Cmd.Parameters.AddWithValue("@LocalDrivingLicenseApplicationID", LocalDrivingLicenseApplicationID);
 
-                        int Result = UtilitiesClass.ExecuteScalar(Cmd);
+                        int Result = await UtilitiesClass.ExecuteScalarAsync(Cmd);
 
                         return Result == -1 ? 0 : Result;
                     }
@@ -93,7 +96,7 @@ namespace DataAccessLayer
         }
 
         // Check if a person passed a specific test type.
-        public static bool HasPassedTestType(int TestTypeID, int LocalDrivingLicenseApplicationID)
+        public static async Task<bool> HasPassedTestTypeAsync(int TestTypeID, int LocalDrivingLicenseApplicationID)
         {
             string Query = @"SELECT COUNT(*) FROM Tests T
                            INNER JOIN TestAppointments TA ON T.TestAppointmentID = TA.TestAppointmentID
@@ -104,13 +107,13 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Cmd = new SqlCommand(Query, Conn))
                     {
                         Cmd.Parameters.AddWithValue("@LocalDrivingLicenseApplicationID", LocalDrivingLicenseApplicationID);
                         Cmd.Parameters.AddWithValue("@TestTypeID", TestTypeID);
 
-                        return (UtilitiesClass.ExecuteScalar(Cmd) > 0);
+                        return (await UtilitiesClass.ExecuteScalarAsync(Cmd) > 0);
                     }
                 }
             }
@@ -118,7 +121,7 @@ namespace DataAccessLayer
         }
 
         // Add a new test and lock the appointment.
-        public static int AddNew(TestDTO Test)
+        public static async Task<int> AddNewAsync(TestDTO Test)
         {
             string Query = @"INSERT INTO Tests (TestAppointmentID, TestResult, Notes, CreatedByUserID)
                            VALUES (@TestAppointmentID, @TestResult, @Notes, @CreatedByUserID);
@@ -127,12 +130,12 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Cmd = new SqlCommand(Query, Conn))
                     {
                         SetParameters(Cmd, Test);
 
-                        return UtilitiesClass.ExecuteScalar(Cmd);
+                        return await UtilitiesClass.ExecuteScalarAsync(Cmd);
                     }
                 }
             }
@@ -140,7 +143,7 @@ namespace DataAccessLayer
         }
 
         // Update an existing test record.
-        public static bool Update(TestDTO Test)
+        public static async Task<bool> UpdateAsync(TestDTO Test)
         {
             string Query = @"UPDATE Tests
                            SET TestAppointmentID = @TestAppointmentID,
@@ -152,12 +155,12 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Cmd = new SqlCommand(Query, Conn))
                     {
                         SetParameters(Cmd, Test);
 
-                        return (UtilitiesClass.ExecuteNonQuery(Cmd) > 0);
+                        return (await UtilitiesClass.ExecuteNonQueryAsync(Cmd) > 0);
                     }
                 }
             }

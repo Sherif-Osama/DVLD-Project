@@ -17,12 +17,12 @@ namespace DVLD.User
         }
 
         // Loads user information when the form is opened
-        private void Change_Password_Load(object sender, EventArgs e)
+        private async void Change_Password_Load(object sender, EventArgs e)
         {
-            UserInfo = ClsUser.Find(UserID);
+            UserInfo = await ClsUser.FindAsync(UserID);
 
             if (UserInfo != null)
-            { ctrlLogInInformationcs1.LoadUserInfo(UserInfo.UserID); }
+            { await ctrlLogInInformationcs1.LoadUserInfo(UserInfo.UserID); }
             else
             {
                 //Here we dont continue becuase the form is not valid
@@ -48,7 +48,7 @@ namespace DVLD.User
         private bool Validations() => ClsValidation.ValidateEmptyTextBoxes(errorProvider1, this) && IsMatchPasswords() && UserInfo != null;
 
         // Triggered when the user clicks the "Save" button
-        private void btnSave_Click(object sender, EventArgs e)
+        private async void btnSave_Click(object sender, EventArgs e)
         {
             // Validate input fields and password confirmation before proceeding
             if (!Validations())
@@ -58,7 +58,7 @@ namespace DVLD.User
             { { errorProvider1.SetError(txtCurrentPassword, "Incorrect password"); return; } }
 
             // Save changes to the database
-            if (UserInfo.ChangePassword(txtNewPassword.Text.Trim()))
+            if (await UserInfo.ChangePasswordAsync(txtNewPassword.Text.Trim()))
             {
                 MessageBox.Show("Saved successfully", "", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 btnSave.Enabled = false;

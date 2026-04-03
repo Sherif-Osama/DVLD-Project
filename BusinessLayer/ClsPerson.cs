@@ -2,6 +2,7 @@
 using DTO;
 using System;
 using System.Data;
+using System.Threading.Tasks;
 
 namespace BusinessLayer
 {
@@ -45,7 +46,6 @@ namespace BusinessLayer
             this.Phone = PersonInfoDTO.Phone;
             this.Email = PersonInfoDTO.Email;
             this.NationalityCountryID = PersonInfoDTO.NationalityCountryID;
-            Country = ClsCountry.Find(PersonInfoDTO.NationalityCountryID);
             this.ImagePath = PersonInfoDTO.ImagePath;
             Mode = EnMode.Update;
         }
@@ -91,79 +91,93 @@ namespace BusinessLayer
         }
 
         // Get all people from DB
-        static public DataTable GetAllPeople() => ClsPeopleData.GetAllPeople();
+        static public Task<DataTable> GetAllPeopleAsync() => ClsPeopleData.GetAllPeopleAsync();
 
         #region Existence Check Methods
         // Check if a person exists by National Number
-        static public bool PersonExists(string NationalNo) => ClsPeopleData.PersonExists(NationalNo);
+        static public Task<bool> PersonExistsAsync(string NationalNo) => ClsPeopleData.PersonExistsAsync(NationalNo);
 
         // Check if a person exists by ID
-        static public bool PersonExists(int ID) => ClsPeopleData.PersonExists(ID);
+        static public Task<bool> PersonExistsAsync(int ID) => ClsPeopleData.PersonExistsAsync(ID);
         #endregion
         #region Find Methods
-        // Find person by ID
-        static public ClsPerson Find(int PersonID)
+
+        private async Task LoadRelatedDataAsync()
         {
-            PersonDTO PersonInfoDTO = ClsPeopleData.Find(PersonID);
+            this.Country = await ClsCountry.FindAsync(this.NationalityCountryID);
+        }
+
+        // Find person by ID
+        static public async Task<ClsPerson> FindAsync(int PersonID)
+        {
+            PersonDTO PersonInfoDTO = await ClsPeopleData.FindAsync(PersonID);
             if (PersonInfoDTO == null) return null; // Return null if not found
 
-            return new ClsPerson(PersonInfoDTO);
+            ClsPerson PersonObj = new ClsPerson(PersonInfoDTO);
+
+            await PersonObj.LoadRelatedDataAsync();
+
+            return PersonObj;
         }
 
         // Find person by National Number
-        static public ClsPerson Find(string NationalNo)
+        static public async Task<ClsPerson> FindAsync(string NationalNo)
         {
-            PersonDTO PersonInfoDTO = ClsPeopleData.Find(NationalNo);
+            PersonDTO PersonInfoDTO = await ClsPeopleData.FindAsync(NationalNo);
             if (PersonInfoDTO == null) return null; // Return null if not found
 
-            return new ClsPerson(PersonInfoDTO);
+            ClsPerson PersonObj = new ClsPerson(PersonInfoDTO);
+
+            await PersonObj.LoadRelatedDataAsync();
+
+            return PersonObj;
         }
         #endregion
         #region Add/Update/Delete Methods
 
-        private bool BusinessRules()
+        private async Task<bool> BusinessRulesAsync()
         {
             if (this.Mode == EnMode.AddNew)
             {
-                return !PersonExists(this.NationalNo); // Ensure national number is unique
+                return !await PersonExistsAsync(this.NationalNo); // Ensure national number is unique
             }
             else if (this.Mode == EnMode.Update)
             {
-                PersonDTO Person = ClsPeopleData.Find(this.NationalNo);
+                PersonDTO Person = await ClsPeopleData.FindAsync(this.NationalNo);
                 return Person == null || this.PersonID == Person?.PersonID;
             }
             return true;
         }
 
         // Add a new person to the database
-        private bool AddNewPerson()
+        private async Task<bool> AddNewPersonAsync()
         {
-            PersonID = ClsPeopleData.AddNewPerson(MappingToDTO());
+            PersonID = await ClsPeopleData.AddNewPersonAsync(MappingToDTO());
 
             return PersonID != -1; // Return true if added successfully
         }
 
         // Update existing person in the database
-        private bool UpdatePerson() => ClsPeopleData.UpdatePersonInfo(MappingToDTO());
+        private Task<bool> UpdatePersonAsync() => ClsPeopleData.UpdatePersonInfoAsync(MappingToDTO());
 
         // Save the person (insert if new, update if existing)
-        public bool Save()
+        public async Task<bool> SaveAsync()
         {
-            if (BusinessRules())
+            if (await BusinessRulesAsync())
             {
                 switch (Mode)
                 {
                     case EnMode.AddNew:
-                        if (AddNewPerson()) { Mode = EnMode.Update; return true; }
+                        if (await AddNewPersonAsync()) { Mode = EnMode.Update; return true; }
                         return false;
 
                     case EnMode.Update:
-                        return UpdatePerson();
+                        return await UpdatePersonAsync();
                 }
             }
             return false;
         }
-        public static bool Delete(int PersonID) => ClsPeopleData.Delete(PersonID);
+        public static Task<bool> DeleteAsync(int PersonID) => ClsPeopleData.DeleteAsync(PersonID);
     }
     #endregion
 }

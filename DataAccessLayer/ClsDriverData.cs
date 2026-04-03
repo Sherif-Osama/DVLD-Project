@@ -3,6 +3,7 @@ using DTO;
 using System;
 using System.Data;
 using System.Data.SqlClient;
+using System.Threading.Tasks;
 
 namespace DataAccessLayer
 {
@@ -23,13 +24,13 @@ namespace DataAccessLayer
         }
 
         // Read a driver from SqlDataReader and return as DriverDTO.
-        private static DriverDTO ReadDriverData(SqlCommand Comd)
+        private static async Task<DriverDTO> ReadDriverDataAsync(SqlCommand Comd)
         {
             try
             {
-                using (SqlDataReader Reader = Comd.ExecuteReader())
+                using (SqlDataReader Reader = await Comd.ExecuteReaderAsync())
                 {
-                    if (Reader.Read())
+                    if (await Reader.ReadAsync())
                     {
                         return new DriverDTO
                         {
@@ -46,35 +47,35 @@ namespace DataAccessLayer
         }
 
         // Get all drivers as a DataTable.
-        public static DataTable GetAllDrivers()
+        public static async Task<DataTable> GetAllDriversAsync()
         {
             string Query = "SELECT * FROM Drivers_View order by FullName";
             try
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
-                        return UtilitiesClass.ExecuteDataTable(Comd);
+                        return await UtilitiesClass.ExecuteDataTableAsync(Comd);
                     }
                 }
             }
             catch (Exception ex) { ClsLogger.Log(ex); return null; }
         }
 
-        public static DriverDTO FindByPersonID(int PersonID)
+        public static async Task<DriverDTO> FindByPersonIDAsync(int PersonID)
         {
             string Query = "SELECT * FROM Drivers WHERE PersonID = @PersonID";
             try
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@PersonID", SqlDbType.Int).Value = PersonID;
-                        return ReadDriverData(Comd);
+                        return await ReadDriverDataAsync(Comd);
                     }
                 }
             }
@@ -82,7 +83,7 @@ namespace DataAccessLayer
         }
 
         // Find a driver by ID and return as DriverDTO.
-        public static DriverDTO Find(int DriverID)
+        public static async Task<DriverDTO> FindAsync(int DriverID)
         {
             string Query = "SELECT * FROM Drivers WHERE DriverID =  @DriverID";
 
@@ -90,11 +91,11 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@DriverID", SqlDbType.Int).Value = DriverID;
-                        return ReadDriverData(Comd);
+                        return await ReadDriverDataAsync(Comd);
                     }
                 }
             }
@@ -102,7 +103,7 @@ namespace DataAccessLayer
         }
 
         // Insert a new driver and return the new ID (or -1 on error).
-        public static int AddNew(DriverDTO Driver)
+        public static async Task<int> AddNewAsync(DriverDTO Driver)
         {
             string Query = @"INSERT INTO Drivers (PersonID, CreatedByUserID, CreatedDate)
                            VALUES (@PersonID, @CreatedByUserID, @CreatedDate);
@@ -111,12 +112,12 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         SetParameters(Comd, Driver);
 
-                        return UtilitiesClass.ExecuteScalar(Comd);
+                        return await UtilitiesClass.ExecuteScalarAsync(Comd);
                     }
                 }
             }
@@ -124,7 +125,7 @@ namespace DataAccessLayer
         }
 
         // Update an existing driver record.
-        public static bool Update(DriverDTO Driver)
+        public static async Task<bool> UpdateAsync(DriverDTO Driver)
         {
             string Query = @"UPDATE Drivers SET 
                              PersonID = @PersonID,
@@ -135,12 +136,12 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         SetParameters(Comd, Driver);
 
-                        return (UtilitiesClass.ExecuteNonQuery(Comd) > 0);
+                        return (await UtilitiesClass.ExecuteNonQueryAsync(Comd) > 0);
                     }
                 }
             }

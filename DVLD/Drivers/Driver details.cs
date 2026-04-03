@@ -2,6 +2,7 @@
 using DVLD.Global_classes;
 using DVLD.License;
 using DVLD.People;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 namespace DVLD.Drivers
 {
@@ -12,9 +13,9 @@ namespace DVLD.Drivers
             InitializeComponent();
         }
 
-        private void RefreshDataGridView()
+        private async Task RefreshDataGridViewAsync()
         {
-            dgvDrivers.DataSource = ClsDriver.GetAllDrivers();
+            dgvDrivers.DataSource = await ClsDriver.GetAllDriversAsync();
 
             int RowCount = dgvDrivers.Rows.Count;
 
@@ -50,10 +51,10 @@ namespace DVLD.Drivers
             }
         }
 
-        private void DriversDetails_Load(object sender, System.EventArgs e)
+        private async void DriversDetails_Load(object sender, System.EventArgs e)
         {
 
-            RefreshDataGridView();
+            await RefreshDataGridViewAsync();
             LoadFilterData();
         }
 

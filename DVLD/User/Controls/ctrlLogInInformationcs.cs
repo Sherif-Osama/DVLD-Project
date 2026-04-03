@@ -1,4 +1,5 @@
 ﻿using BusinessLayer;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace DVLD.Controls
@@ -7,21 +8,18 @@ namespace DVLD.Controls
     {
         public int UserID { get; set; }
 
-        public ctrlLogInInformationcs()
-        {
-            InitializeComponent();
-        }
+        public ctrlLogInInformationcs() => InitializeComponent();
 
-        public void LoadUserInfo(int UserID)
+        public async Task LoadUserInfo(int UserID)
         {
             this.UserID = UserID;
-            SetData();
+            await SetData();
         }
 
         // Fetches user data from the Business Layer and displays it in the control
-        private void SetData()
+        private async Task SetData()
         {
-            ClsUser User = ClsUser.Find(UserID);
+            ClsUser User = await ClsUser.FindAsync(UserID);
 
             if (User != null)
             {
@@ -31,7 +29,7 @@ namespace DVLD.Controls
                 lblIsActive.Text = User.IsActive == true ? "Yes" : "No";
 
                 // Load related person data into the embedded person card control
-                ctrlPersonCard2.LoadPerson(User.PersonID);
+                await ctrlPersonCard2.LoadPersonAsync(User.PersonID);
             }
         }
     }

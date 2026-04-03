@@ -2,6 +2,7 @@
 using DVLD.Controls;
 using DVLD.Global_classes;
 using System;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 namespace DVLD.User
 {
@@ -45,19 +46,18 @@ namespace DVLD.User
             tabPage2.Enabled = Enabled;
             Save.Enabled = Enabled;
         }
-
         #endregion
 
         #region Load UI Data
         // Loads existing user data from database when updating
-        private void SetUserData()
+        private async Task SetUserData()
         {
-            User = ClsUser.Find(UserID); // Retrieve user from database
+            User = await ClsUser.FindAsync(UserID); // Retrieve user from database
 
             if (User != null)
             {
                 PersonID = User.PersonID;
-                ctrlPersonCardWithFilter1.LoadPerson(User.PersonID); // Load person info into control
+                await ctrlPersonCardWithFilter1.LoadPersonAsync(User.PersonID); // Load person info into control
                 txtUserName.Text = User.UserName;
                 lblUserID.Text = User.UserID.ToString();
                 chkIsActive.Checked = User.IsActive;
@@ -66,7 +66,7 @@ namespace DVLD.User
         }
 
         // Executes when form loads
-        private void AddUpdataUserInfo_Load(object sender, EventArgs e)
+        private async void AddUpdataUserInfo_Load(object sender, EventArgs e)
         {
             switch (Mode)
             {
@@ -84,7 +84,7 @@ namespace DVLD.User
                     txtConfirmPassword.Enabled = false;
                     txtConfirmPassword.Tag = "Optional";
                     Nextbutton.Enabled = true;
-                    SetUserData();                      // Fill controls with data
+                    await SetUserData();                      // Fill controls with data
                     break;
             }
         }
@@ -107,11 +107,11 @@ namespace DVLD.User
         }
 
         // Ensures username is unique
-        private bool UserNameValidation()
+        private async Task<bool> UserNameValidation()
         {
             if (Mode == EnMode.AddNew)
             {
-                if (ClsUser.UserExists(txtUserName.Text.Trim()))
+                if (await ClsUser.UserExistsAsync(txtUserName.Text.Trim()))
                 {
                     errorProvider1.SetError(txtUserName, "This username is already in use by another user! Enter another username.");
                     return false;
@@ -121,7 +121,7 @@ namespace DVLD.User
             }
 
             // In update mode → allow same username if it belongs to current user
-            if (ClsUser.UserExists(txtUserName.Text.Trim()) &&
+            if (await ClsUser.UserExistsAsync(txtUserName.Text.Trim()) &&
                 User.UserName != txtUserName.Text.Trim())
             {
                 errorProvider1.SetError(txtUserName,
@@ -134,11 +134,11 @@ namespace DVLD.User
         }
 
         // Saves user data after validation
-        private void SaveUserInfo()
+        private async Task SaveUserInfo()
         {
             if (ClsValidation.ValidateEmptyTextBoxes(errorProvider1, tabPage2)
                 && IsMatchPassword()
-                && UserNameValidation())
+                && await UserNameValidation())
             {
                 // Assign UI values to object
                 User.UserName = txtUserName.Text.Trim();
@@ -147,7 +147,7 @@ namespace DVLD.User
                 User.PersonID = PersonID;
 
                 // Save to database
-                if (User.Save())
+                if (await User.SaveAsync())
                 {
                     MessageBox.Show("Saved successfully", "",
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -181,13 +181,13 @@ namespace DVLD.User
         #region Button Events
 
         // Save button click
-        private void Save_Click(object sender, EventArgs e) => SaveUserInfo();
+        private async void Save_Click(object sender, EventArgs e) => await SaveUserInfo();
 
         // Cancel button click → close form
         private void butCancel_Click(object sender, EventArgs e) => this.Close();
 
         // Next button → validate selected person and move to login tab
-        private void Nextbutton_Click(object sender, EventArgs e)
+        private async void Nextbutton_Click(object sender, EventArgs e)
         {
             if (Mode == EnMode.AddNew)
             {
@@ -198,7 +198,7 @@ namespace DVLD.User
                     return;
                 }
 
-                if (ClsUser.IsUser(PersonID))
+                if (await ClsUser.IsUserAsync(PersonID))
                 {
                     MessageBox.Show("this person is already used in the system.",
                         "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -210,7 +210,6 @@ namespace DVLD.User
             tabControl1.SelectedIndex = 1; // Move to login tab
             InitializePageLoginInfo(true); // Enable login controls
         }
-
         #endregion
 
         #region TextBox Events
@@ -222,7 +221,6 @@ namespace DVLD.User
 
         // Clear error when confirm password changes
         private void txtConfirmPassword_TextChanged(object sender, EventArgs e) => errorProvider1.SetError(txtConfirmPassword, "");
-
         #endregion
     }
 }

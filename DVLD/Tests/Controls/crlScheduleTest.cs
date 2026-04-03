@@ -2,6 +2,7 @@
 using DVLD.Global_classes;
 using DVLD.Properties;
 using System;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace DVLD.Tests.Controls
@@ -16,6 +17,7 @@ namespace DVLD.Tests.Controls
         EnCreationMode CreationMode;
         ClsLocalDrivingLicenseApplication LocalDrivingLicenseApplication;
         ClsTestAppointments TestAppointment;
+        private ClsTestTypes TestType;
         private ClsTestTypes.EnTestType Type;
         #region Initialization Components
 
@@ -24,19 +26,21 @@ namespace DVLD.Tests.Controls
             InitializeComponent();
         }
 
-        public void InitializeControl(int LocalDrivingLicenseApplicationID, int AppointmentID, ClsTestTypes.EnTestType Type)
+        public async Task InitializeControl(int LocalDrivingLicenseApplicationID, int AppointmentID, ClsTestTypes.EnTestType Type)
         {
             this.AppointmentID = AppointmentID;
             this.Mode = AppointmentID == -1 ? EnMode.Addnew : EnMode.Update;
-            LocalDrivingLicenseApplication = ClsLocalDrivingLicenseApplication.Find(LocalDrivingLicenseApplicationID);
+            LocalDrivingLicenseApplication = await ClsLocalDrivingLicenseApplication.FindAsync(LocalDrivingLicenseApplicationID);
             this.Type = Type;
 
-            if (LocalDrivingLicenseApplication.DoesAttendTestType((int)Type))
+            TestType = await ClsTestTypes.FindAsync((int)Type);
+
+            if (TestType != null && await LocalDrivingLicenseApplication.DoesAttendTestTypeAsync((int)Type))
                 CreationMode = EnCreationMode.RetakeTestSchedule;
             else
                 CreationMode = EnCreationMode.FirstTimeSchedule;
 
-            LoadUIData();
+            await LoadUIData();
         }
         #endregion
 
@@ -62,7 +66,7 @@ namespace DVLD.Tests.Controls
             this.Text = "Street Test";
         }
 
-        private void LoadUIData()
+        private async Task LoadUIData()
         {
             switch (Type)
             {
@@ -76,57 +80,57 @@ namespace DVLD.Tests.Controls
                     LoadStreetTestUI();
                     break;
             }
-            LoadAppointmentData();
+            await LoadAppointmentData();
         }
         #endregion
 
-        private void LoadAppointmentData()
+        private async Task LoadAppointmentData()
         {
             switch (Mode)
             {
                 case EnMode.Addnew:
                     TestAppointment = new ClsTestAppointments();
-                    LoadApplicationData();
+                    await LoadApplicationData();
                     break;
                 case EnMode.Update:
-                    TestAppointment = ClsTestAppointments.Find(AppointmentID);
+                    TestAppointment = await ClsTestAppointments.FindAsync(AppointmentID);
                     if (TestAppointment != null)
                     {
                         dtpTestDate.Value = TestAppointment?.AppointmentDate ?? DateTime.Now;
-                        LoadApplicationData();
+                        await LoadApplicationData();
                     }
                     else { btnSave.Enabled = false; }
                     break;
             }
         }
 
-        private void LoadRetakeTestUI()
+        private async Task LoadRetakeTestUI()
         {
             if (CreationMode == EnCreationMode.RetakeTestSchedule)
             {
                 lblRetakeTestAppID.Text = TestAppointment.RetakeTestApplicationID == -1 ? "N/A" : TestAppointment.RetakeTestApplicationID.ToString();
-                decimal Fees = Convert.ToDecimal(ClsApplicationsTypes.Find((int)ClsApplications.EnApplicationType.RetakeTest)?.Fees ?? 0);
+                decimal Fees = Convert.ToDecimal((await ClsApplicationsTypes.FindAsync((int)ClsApplications.EnApplicationType.RetakeTest))?.Fees ?? 0);
                 lblTitle.Text = "Schedule Retake Test";
                 gbRetakeTestInfo.Enabled = true;
                 lblRetakeAppFees.Text = Fees.ToString();
-                lblTotalFees.Text = (Fees + Convert.ToDecimal(ClsTestTypes.Find((int)Type)?.Fees ?? 0)).ToString();
+                lblTotalFees.Text = (Fees + Convert.ToDecimal(TestType?.Fees ?? 0)).ToString();
             }
             else
             { gbRetakeTestInfo.Enabled = false; }
         }
 
-        private void LoadApplicationData()
+        private async Task LoadApplicationData()
         {
             if (LocalDrivingLicenseApplication != null)
             {
                 dtpTestDate.MaxDate = DateTime.Now.AddMonths(1);
                 dtpTestDate.MinDate = DateTime.Now;
                 lblLocalDrivingLicenseAppID.Text = LocalDrivingLicenseApplication.LocalDrivingLicenseApplicationID.ToString();
-                lblDrivingClass.Text = ClsLicenseClasses.Find(LocalDrivingLicenseApplication.LicenseClassID)?.ClassName ?? "UnKnown";
+                lblDrivingClass.Text = (await ClsLicenseClasses.FindAsync(LocalDrivingLicenseApplication.LicenseClassID))?.ClassName ?? "UnKnown";
                 lblFullName.Text = LocalDrivingLicenseApplication.ApplicantPersonInfo?.FullName ?? "UnKnown";
-                lblFees.Text = ClsTestTypes.Find((int)Type)?.Fees.ToString() ?? "UnKnown";
-                lblTrial.Text = LocalDrivingLicenseApplication.TestTrialCount((int)Type).ToString();
-                LoadRetakeTestUI();
+                lblFees.Text = TestType?.Fees.ToString() ?? "UnKnown";
+                lblTrial.Text = (await LocalDrivingLicenseApplication.TestTrialCountAsync((int)Type)).ToString();
+                await LoadRetakeTestUI();
             }
             else
             {
@@ -148,17 +152,17 @@ namespace DVLD.Tests.Controls
             return true;
         }
 
-        private void btnSave_Click(object sender, EventArgs e)
+        private async void btnSave_Click(object sender, EventArgs e)
         {
             if (SaveValidation())
             {
-                TestAppointment.TestTypeID = (int)Type;
+                TestAppointment.TestTypeID = TestType.TestTypeID;
                 TestAppointment.LocalDrivingLicenseApplicationID = LocalDrivingLicenseApplication.LocalDrivingLicenseApplicationID;
                 TestAppointment.AppointmentDate = dtpTestDate.Value;
-                TestAppointment.PaidFees = Convert.ToSingle(ClsTestTypes.Find((int)Type)?.Fees ?? -1);
+                TestAppointment.PaidFees = Convert.ToSingle(TestType?.Fees ?? -1);
                 TestAppointment.CreatedByUserID = ClsGlobal.CurrentUser.UserID;
 
-                if (TestAppointment.Save())
+                if (await TestAppointment.SaveAsync())
                 {
                     lblRetakeTestAppID.Text = CreationMode == EnCreationMode.RetakeTestSchedule ? TestAppointment.RetakeTestApplicationID.ToString() : lblRetakeTestAppID.Text;
                     MessageBox.Show("Test appointment saved successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);

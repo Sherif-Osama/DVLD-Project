@@ -2,6 +2,7 @@
 using DTO;
 using System;
 using System.Data;
+using System.Threading.Tasks;
 using System.Transactions;
 
 namespace BusinessLayer
@@ -73,26 +74,26 @@ namespace BusinessLayer
         }
 
         // Find a specific appointment by its ID (returns null if not found).
-        public static ClsTestAppointments Find(int AppointmentID)
+        public static async Task<ClsTestAppointments> FindAsync(int AppointmentID)
         {
-            TestAppointmentsDTO TAD = ClsTestAppointmentsData.Find(AppointmentID);
+            TestAppointmentsDTO TAD = await ClsTestAppointmentsData.FindAsync(AppointmentID);
             if (TAD == null) { return null; }
             return new ClsTestAppointments(TAD);
         }
 
         // Get all appointments for a particular application and test type.
-        public static DataTable GetAllApplicationTestAppointments(int ApplicationID, int TestTypeID) => ClsTestAppointmentsData.GetAllApplicationTestAppointments(ApplicationID, TestTypeID);
+        public static Task<DataTable> GetAllApplicationTestAppointmentsAsync(int ApplicationID, int TestTypeID) => ClsTestAppointmentsData.GetAllApplicationTestAppointmentsAsync(ApplicationID, TestTypeID);
         // Lock this appointment (prevent further updates).
-        public bool LockAppointment() => ClsTestAppointmentsData.LockAppointment(this.TestAppointmentID);
+        public Task<bool> LockAppointmentAsync() => ClsTestAppointmentsData.LockAppointmentAsync(this.TestAppointmentID);
 
         #region Add New/Update/delete/save methods
 
-        private bool CreateRetakeApplicationIfNeeded()
+        private async Task<bool> CreateRetakeApplicationIfNeeded()
         {
-            ClsLocalDrivingLicenseApplication LocalDrivingLicenseApplication = ClsLocalDrivingLicenseApplication.Find(this.LocalDrivingLicenseApplicationID);
+            ClsLocalDrivingLicenseApplication LocalDrivingLicenseApplication = await ClsLocalDrivingLicenseApplication.FindAsync(this.LocalDrivingLicenseApplicationID);
             if (LocalDrivingLicenseApplication != null)
             {
-                if (LocalDrivingLicenseApplication.DoesAttendTestType((int)this.TestTypeID))
+                if (await LocalDrivingLicenseApplication.DoesAttendTestTypeAsync((int)this.TestTypeID))
                 {
                     ClsApplications Applications = new ClsApplications
                     {
@@ -101,11 +102,11 @@ namespace BusinessLayer
                         ApplicationTypeID = (int)ClsApplications.EnApplicationType.RetakeTest,
                         ApplicationStatus = ClsApplications.EnApplicationStatus.New,
                         LastStatusDate = DateTime.Now,
-                        PaidFees = ClsApplicationsTypes.Find((int)ClsApplications.EnApplicationType.RetakeTest)?.Fees ?? -1,
+                        PaidFees = (await ClsApplicationsTypes.FindAsync((int)ClsApplications.EnApplicationType.RetakeTest))?.Fees ?? -1,
                         CreatedByUserID = this.CreatedByUserID
                     };
 
-                    if (Applications.Save())
+                    if (await Applications.SaveAsync())
                     {
                         this.RetakeTestApplicationID = Applications.ApplicationID;
                         return true;
@@ -119,13 +120,13 @@ namespace BusinessLayer
         }
 
         // Add a new appointment if business rules allow it.
-        private bool AddNew()
+        private async Task<bool> AddNewAsync()
         {
-            using (TransactionScope Scope = new TransactionScope())
+            using (TransactionScope Scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
             {
-                if (CreateRetakeApplicationIfNeeded())
+                if (await CreateRetakeApplicationIfNeeded())
                 {
-                    this.TestAppointmentID = ClsTestAppointmentsData.AddNew(MappingToDTO());
+                    this.TestAppointmentID = await ClsTestAppointmentsData.AddNewAsync(MappingToDTO());
 
                     if (this.TestAppointmentID != -1)
                     {
@@ -138,15 +139,15 @@ namespace BusinessLayer
         }
 
         // Update the appointment if it is not locked.
-        private bool Update() => ClsTestAppointmentsData.Update(MappingToDTO());
+        private Task<bool> UpdateAsync() => ClsTestAppointmentsData.UpdateAsync(MappingToDTO());
 
-        private bool BusinessRules()
+        private async Task<bool> BusinessRulesAsync()
         {
             if (Mode == EnMode.AddNew)
             {
-                bool IsPassTest = ClsTest.HasPassedTestType(this.TestTypeID, this.LocalDrivingLicenseApplicationID);
-                ClsLocalDrivingLicenseApplication LocalDrivingLicenseApplication = ClsLocalDrivingLicenseApplication.Find(LocalDrivingLicenseApplicationID);
-                bool HasActiveAppoint = LocalDrivingLicenseApplication?.HasActiveAppointment(this.TestTypeID) ?? false;
+                bool IsPassTest = await ClsTest.HasPassedTestTypeAsync(this.TestTypeID, this.LocalDrivingLicenseApplicationID);
+                ClsLocalDrivingLicenseApplication LocalDrivingLicenseApplication = await ClsLocalDrivingLicenseApplication.FindAsync(LocalDrivingLicenseApplicationID);
+                bool HasActiveAppoint = await (LocalDrivingLicenseApplication?.HasActiveAppointmentAsync(this.TestTypeID) ?? Task.FromResult(false));
 
                 return !(IsPassTest || HasActiveAppoint);
             }
@@ -157,17 +158,17 @@ namespace BusinessLayer
         }
 
         // Save entry point: add or update depending on Mode.
-        public bool Save()
+        public async Task<bool> SaveAsync()
         {
-            if (BusinessRules())
+            if (await BusinessRulesAsync())
             {
                 switch (Mode)
                 {
                     case EnMode.AddNew:
-                        if (AddNew()) { Mode = EnMode.Update; return true; }
+                        if (await AddNewAsync()) { Mode = EnMode.Update; return true; }
                         break;
                     case EnMode.Update:
-                        return Update();
+                        return await UpdateAsync();
                 }
             }
             return false;

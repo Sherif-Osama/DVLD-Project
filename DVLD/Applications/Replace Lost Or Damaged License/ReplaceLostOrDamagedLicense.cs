@@ -64,13 +64,13 @@ namespace DVLD.Applications.Replace_Lost_Or_Damaged_License
         }
 
         // Attempt to issue the replacement license when the user clicks the button.
-        private void btnIssueReplacement_Click(object sender, EventArgs e)
+        private async void btnIssueReplacement_Click(object sender, EventArgs e)
         {
             if (MessageBox.Show("Are you sure you want to Issue a Replacement for the license?", "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
             {
                 if (CurrentLicense != null)
                 {
-                    NewLicense = CurrentLicense.Replace(GetIssueReason(), ClsGlobal.CurrentUser.UserID);
+                    NewLicense = await CurrentLicense.ReplaceAsync(GetIssueReason(), ClsGlobal.CurrentUser.UserID);
 
                     if (NewLicense != null)
                     {
@@ -120,31 +120,30 @@ namespace DVLD.Applications.Replace_Lost_Or_Damaged_License
         }
 
         // Update displayed application fee when "Damaged" option is selected.
-        private void rbDamagedLicense_CheckedChanged(object sender, EventArgs e)
+        private async void rbDamagedLicense_CheckedChanged(object sender, EventArgs e)
         {
             if (rbDamagedLicense.Checked)
             {
                 // Lookup the application type and show its fees (falls back to "Unknown")
-                lblApplicationFees.Text = Convert.ToString(ClsApplicationsTypes.Find((int)ClsApplications.EnApplicationType.ReplaceDamagedDrivingLicense)?.Fees.ToString()) ?? "Unknown";
+                lblApplicationFees.Text = Convert.ToString((await ClsApplicationsTypes.FindAsync((int)ClsApplications.EnApplicationType.ReplaceDamagedDrivingLicense))?.Fees.ToString()) ?? "Unknown";
             }
         }
 
         // Update displayed application fee when "Lost" option is selected.
-        private void rbLostLicense_CheckedChanged(object sender, EventArgs e)
+        private async void rbLostLicense_CheckedChanged(object sender, EventArgs e)
         {
             if (rbLostLicense.Checked)
             {
                 // Lookup the application type and show its fees (falls back to "Unknown")
-                lblApplicationFees.Text = Convert.ToString(ClsApplicationsTypes.Find((int)ClsApplications.EnApplicationType.ReplaceLostDrivingLicense)?.Fees.ToString()) ?? "Unknown";
+                lblApplicationFees.Text = Convert.ToString((await ClsApplicationsTypes.FindAsync((int)ClsApplications.EnApplicationType.ReplaceLostDrivingLicense))?.Fees.ToString()) ?? "Unknown";
             }
         }
 
-        private void ctrlDriverLicenseInfoWithFilter1_LicenseSearchCompleted(object sender, ctrlDriverLicenseInfoWithFilter.FilterResult e)
+        private async void ctrlDriverLicenseInfoWithFilter1_LicenseSearchCompleted(object sender, ctrlDriverLicenseInfoWithFilter.FilterResult e)
         {
             if (e.IsFound)
             {
-                CurrentLicense = ClsLicenses.Find(e.LicenseID);
-
+                CurrentLicense = await ClsLicenses.FindAsync(e.LicenseID);
                 if (CurrentLicense != null)
                 {
                     if (!CurrentLicense.IsActive)

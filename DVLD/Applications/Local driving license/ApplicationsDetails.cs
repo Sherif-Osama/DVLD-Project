@@ -12,7 +12,7 @@ namespace DVLD.Applications.Local_driving_license
             this.ApplicationID = ApplicationID;
         }
 
-        private void ApplicationsDetails_Load(object sender, EventArgs e) => ctrlDrivingLicenseApplicationInfo1.SetApplicationData(ApplicationID);
+        private async void ApplicationsDetails_Load(object sender, EventArgs e) => await ctrlDrivingLicenseApplicationInfo1.LoadApplicationDataAsync(ApplicationID);
 
         private void btnClose_Click(object sender, EventArgs e) => this.Close();
 

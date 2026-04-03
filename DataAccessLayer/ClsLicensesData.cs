@@ -1,9 +1,9 @@
 ﻿using DataAccessLayer.LogErorr;
 using DTO;
 using System;
-using System.ComponentModel;
 using System.Data;
 using System.Data.SqlClient;
+using System.Threading.Tasks;
 
 namespace DataAccessLayer
 {
@@ -11,13 +11,13 @@ namespace DataAccessLayer
     public static class ClsLicensesData
     {
         // Read a license from SqlDataReader and return as LicenseDTO.
-        private static LicenseDTO ReadLicenseInfo(SqlCommand Comd)
+        private static async Task<LicenseDTO> ReadLicenseInfoAsync(SqlCommand Comd)
         {
             try
             {
-                using (SqlDataReader Reader = Comd.ExecuteReader())
+                using (SqlDataReader Reader = await Comd.ExecuteReaderAsync())
                 {
-                    if (Reader.Read())
+                    if (await Reader.ReadAsync())
                     {
                         return new LicenseDTO
                         {
@@ -72,7 +72,7 @@ namespace DataAccessLayer
             }
         }
 
-        public static DataTable GetDriverLicenses(int DriverID)
+        public static async Task<DataTable> GetDriverLicensesAsync(int DriverID)
         {
             string Query = @"
                             SELECT LicenseID,
@@ -86,18 +86,18 @@ namespace DataAccessLayer
 
             using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
             {
-                Conn.Open();
+                await Conn.OpenAsync();
                 using (SqlCommand Comd = new SqlCommand(Query, Conn))
                 {
                     Comd.Parameters.Add("@DriverID", SqlDbType.Int).Value = DriverID;
 
-                    return UtilitiesClass.ExecuteDataTable(Comd);
+                    return await UtilitiesClass.ExecuteDataTableAsync(Comd);
                 }
             }
         }
 
         // Find a license by ID and return as LicenseDTO.
-        public static LicenseDTO Find(int LicenseID)
+        public static async Task<LicenseDTO> FindAsync(int LicenseID)
         {
             string Query = @"SELECT TOP 1 *  FROM Licenses WHERE LicenseID = @LicenseID;";
 
@@ -105,12 +105,12 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@LicenseID", SqlDbType.Int).Value = LicenseID;
 
-                        return ReadLicenseInfo(Comd);
+                        return await ReadLicenseInfoAsync(Comd);
                     }
                 }
             }
@@ -118,19 +118,19 @@ namespace DataAccessLayer
         }
 
         // Find a license by application ID and return as LicenseDTO.
-        public static LicenseDTO FindByApplicationID(int ApplicationID)
+        public static async Task<LicenseDTO> FindByApplicationIDAsync(int ApplicationID)
         {
             string Query = @"SELECT TOP 1 * FROM Licenses WHERE ApplicationID = @ApplicationID;";
             try
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
 
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@ApplicationID", SqlDbType.Int).Value = ApplicationID;
-                        return ReadLicenseInfo(Comd);
+                        return await ReadLicenseInfoAsync(Comd);
                     }
                 }
             }
@@ -138,7 +138,7 @@ namespace DataAccessLayer
         }
 
         // Find a license by driver ID and license class ID and return as LicenseDTO.
-        public static LicenseDTO Find(int DriverID, int LicenseClassID)
+        public static async Task<LicenseDTO> FindAsync(int DriverID, int LicenseClassID)
         {
             string Query = @"SELECT TOP 1 * FROM Licenses
                             WHERE DriverID = @DriverID AND LicenseClass = @LicenseClassID;";
@@ -146,19 +146,19 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@DriverID", SqlDbType.Int).Value = DriverID;
                         Comd.Parameters.Add("@LicenseClassID", SqlDbType.Int).Value = LicenseClassID;
-                        return ReadLicenseInfo(Comd);
+                        return await ReadLicenseInfoAsync(Comd);
                     }
                 }
             }
             catch (Exception Ex) { ClsLogger.Log(Ex); return null; }
         }
 
-        public static LicenseDTO FindActiveLicenseByDriverID(int DriverID, int LicenseClassID)
+        public static async Task<LicenseDTO> FindActiveLicenseByDriverIDAsync(int DriverID, int LicenseClassID)
         {
             string Query = @"SELECT TOP 1 * FROM Licenses
                             WHERE DriverID = @DriverID AND LicenseClass = @LicenseClassID AND IsActive = 1;";
@@ -166,12 +166,12 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@DriverID", SqlDbType.Int).Value = DriverID;
                         Comd.Parameters.Add("@LicenseClassID", SqlDbType.Int).Value = LicenseClassID;
-                        return ReadLicenseInfo(Comd);
+                        return await ReadLicenseInfoAsync(Comd);
                     }
                 }
             }
@@ -179,7 +179,7 @@ namespace DataAccessLayer
         }
 
         // Check if a person has an existing license for a specific license class.
-        public static bool IsLicenseExist(int Person, int LicenseClassID)
+        public static async Task<bool> IsLicenseExistAsync(int Person, int LicenseClassID)
         {
             string Query = @"SELECT COUNT(*) FROM Licenses
                             INNER JOIN Drivers on Drivers.DriverID = Licenses.DriverID
@@ -189,13 +189,13 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@LicenseClassID", SqlDbType.Int).Value = LicenseClassID;
                         Comd.Parameters.Add("@PersonID", SqlDbType.Int).Value = Person;
 
-                        return UtilitiesClass.ExecuteScalar(Comd) != -1;
+                        return await UtilitiesClass.ExecuteScalarAsync(Comd) != -1;
                     }
                 }
 
@@ -203,7 +203,7 @@ namespace DataAccessLayer
             catch (Exception Ex) { ClsLogger.Log(Ex); return false; }
         }
 
-        public static bool HasLicense(int DriverID, int LicenseClassID)
+        public static async Task<bool> HasLicenseAsync(int DriverID, int LicenseClassID)
         {
             string Query = @"SELECT COUNT(*) FROM Licenses
                             WHERE DriverID = @DriverID AND LicenseClass = @LicenseClassID;";
@@ -211,20 +211,20 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@DriverID", SqlDbType.Int).Value = DriverID;
                         Comd.Parameters.Add("@LicenseClassID", SqlDbType.Int).Value = LicenseClassID;
 
-                        return UtilitiesClass.ExecuteScalar(Comd) != -1;
+                        return await UtilitiesClass.ExecuteScalarAsync(Comd) != -1;
                     }
                 }
             }
             catch (Exception Ex) { ClsLogger.Log(Ex); return false; }
         }
 
-        public static bool HasActiveLicense(int DriverID, int LicenseClassID)
+        public static async Task<bool> HasActiveLicenseAsync(int DriverID, int LicenseClassID)
         {
             string Query = @"SELECT COUNT(*) FROM Licenses
                             WHERE DriverID = @DriverID AND LicenseClass = @LicenseClassID AND IsActive = 1;";
@@ -232,53 +232,31 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@DriverID", SqlDbType.Int).Value = DriverID;
                         Comd.Parameters.Add("@LicenseClassID", SqlDbType.Int).Value = LicenseClassID;
 
-                        return UtilitiesClass.ExecuteScalar(Comd) != -1;
+                        return await UtilitiesClass.ExecuteScalarAsync(Comd) != -1;
                     }
                 }
             }
             catch (Exception Ex) { ClsLogger.Log(Ex); return false; }
         }
 
-        // Check if a license has been issued for a person in a specific license class.
-        public static bool IssueLicense(int PersonID, int LicenseClassID)
-        {
-            string Query = @"SELECT COUNT(*) FROM Licenses
-                            INNER JOIN Drivers on Drivers.DriverID = Licenses.DriverID
-                            WHERE LicenseClass = @LicenseClassID AND Drivers.PersonID = @PersonID;";
-            try
-            {
-                using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
-                {
-                    Conn.Open();
-                    using (SqlCommand Comd = new SqlCommand(Query, Conn))
-                    {
-                        Comd.Parameters.Add("@LicenseClassID", SqlDbType.Int).Value = LicenseClassID;
-                        Comd.Parameters.Add("@PersonID", SqlDbType.Int).Value = PersonID;
-                        return UtilitiesClass.ExecuteScalar(Comd) != -1;
-                    }
-                }
-            }
-            catch (Exception Ex) { ClsLogger.Log(Ex); return false; }
-        }
-
-        public static bool DeactivateCurrentLicense(int LicenseID)
+        public static async Task<bool> DeactivateCurrentLicenseAsync(int LicenseID)
         {
             string Query = @"UPDATE Licenses SET IsActive = 0 WHERE LicenseID = @LicenseID;";
             try
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@LicenseID", SqlDbType.Int).Value = LicenseID;
-                        return (UtilitiesClass.ExecuteNonQuery(Comd) > 0);
+                        return (await UtilitiesClass.ExecuteNonQueryAsync(Comd) > 0);
                     }
                 }
             }
@@ -286,7 +264,7 @@ namespace DataAccessLayer
         }
 
         // Insert a new license and return the new ID (or -1 on error).
-        public static int AddNew(LicenseDTO License)
+        public static async Task<int> AddNewAsync(LicenseDTO License)
         {
             string Query = @"INSERT INTO 
                             Licenses(ApplicationID,DriverID,LicenseClass,
@@ -300,12 +278,12 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         SetParameters(Comd, License);
 
-                        return UtilitiesClass.ExecuteScalar(Comd);
+                        return await UtilitiesClass.ExecuteScalarAsync(Comd);
                     }
                 }
             }
@@ -313,7 +291,7 @@ namespace DataAccessLayer
         }
 
         // Update an existing license record.
-        public static bool Update(LicenseDTO License)
+        public static async Task<bool> UpdateAsync(LicenseDTO License)
         {
             string Query = @"UPDATE Licenses SET 
                             ApplicationID = @ApplicationID,
@@ -331,12 +309,12 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         SetParameters(Comd, License);
 
-                        return (UtilitiesClass.ExecuteNonQuery(Comd) > 0);
+                        return (await UtilitiesClass.ExecuteNonQueryAsync(Comd) > 0);
                     }
                 }
             }

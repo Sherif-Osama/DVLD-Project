@@ -1,5 +1,6 @@
 ﻿using DataAccessLayer;
 using DTO;
+using System.Threading.Tasks;
 using System.Transactions;
 
 namespace BusinessLayer
@@ -46,7 +47,6 @@ namespace BusinessLayer
         {
             this.TestID = TestDTO.TestID;
             this.TestAppointmentID = TestDTO.TestAppointmentID;
-            AppointmentsInfo = ClsTestAppointments.Find(this.TestAppointmentID);
             this.TestResult = TestDTO.TestResult;
             this.Notes = TestDTO.Notes;
             this.CreatedByUserID = TestDTO.CreatedByUserID;
@@ -68,30 +68,42 @@ namespace BusinessLayer
         }
 
         // Convenience wrappers for common queries in the data layer.
-        public static int GetPassedTestsCountForApplication(int LocalDrivingLicenseApplicationID) => ClsTestData.GetPassedTestsCountForApplication(LocalDrivingLicenseApplicationID);
+        public static Task<int> GetPassedTestsCountForApplicationAsync(int LocalDrivingLicenseApplicationID) => ClsTestData.GetPassedTestsCountForApplicationAsync(LocalDrivingLicenseApplicationID);
 
-        public static bool HasPassedTestType(int TestTypeID, int LocalDrivingLicenseApplicationID) => ClsTestData.HasPassedTestType(TestTypeID, LocalDrivingLicenseApplicationID);
+        public static Task<bool> HasPassedTestTypeAsync(int TestTypeID, int LocalDrivingLicenseApplicationID) => ClsTestData.HasPassedTestTypeAsync(TestTypeID, LocalDrivingLicenseApplicationID);
+
+        #region Find Methods
+        private async Task LoadRelatedDataAsync()
+        {
+            AppointmentsInfo = await ClsTestAppointments.FindAsync(this.TestAppointmentID);
+        }
 
         // Find a test record by its ID. Returns null if not found.
-        public static ClsTest Find(int TestID)
+        public static async Task<ClsTest> FindAsync(int TestID)
         {
-            TestDTO TestDTO = ClsTestData.Find(TestID);
+            TestDTO TestDTO = await ClsTestData.FindAsync(TestID);
 
             if (TestDTO == null) { return null; }
 
-            return new ClsTest(TestDTO);
+            ClsTest TestObj = new ClsTest(TestDTO);
+
+            await TestObj.LoadRelatedDataAsync();
+
+            return TestObj;
         }
+        #endregion
 
         #region Add new/Update
         // If this test was created as part of a retake flow, mark the retake application completed.
-        private bool HandleRetakeApplication()
+        private async Task<bool> HandleRetakeApplication()
         {
             if (AppointmentsInfo != null && AppointmentsInfo.RetakeTestApplicationID != -1)
             {
-                ClsApplications Applications = ClsApplications.Find(AppointmentsInfo.RetakeTestApplicationID);
+                ClsApplications Applications = await ClsApplications.FindAsync(AppointmentsInfo.RetakeTestApplicationID);
+
                 if (Applications != null)
                 {
-                    if (!Applications.SetComplete())
+                    if (!await Applications.SetCompleteAsync())
                         return false;
                 }
                 else
@@ -104,22 +116,22 @@ namespace BusinessLayer
         // - Ensure appointment isn't locked,
         // - Handle retake application completion if needed,
         // - Persist test record and lock appointment inside a transaction.
-        private bool AddNew()
+        private async Task<bool> AddNewAsync()
         {
-            AppointmentsInfo = ClsTestAppointments.Find(this.TestAppointmentID);
+            AppointmentsInfo = await ClsTestAppointments.FindAsync(this.TestAppointmentID);
 
             if (!AppointmentsInfo.IsLocked)
             {
-                using (TransactionScope Scope = new TransactionScope())
+                using (TransactionScope Scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
                 {
-                    if (!HandleRetakeApplication())
+                    if (!await HandleRetakeApplication())
                         return false;
 
-                    this.TestID = ClsTestData.AddNew(MappingToDTO());
+                    this.TestID = await ClsTestData.AddNewAsync(MappingToDTO());
                     if ((this.TestID == -1))
                         return false;
 
-                    if (!AppointmentsInfo.LockAppointment())
+                    if (!await AppointmentsInfo.LockAppointmentAsync())
                         return false;
 
                     Scope.Complete();
@@ -130,18 +142,18 @@ namespace BusinessLayer
         }
 
         // Update an existing test record.
-        private bool Update() => ClsTestData.Update(MappingToDTO());
+        private Task<bool> UpdateAsync() => ClsTestData.UpdateAsync(MappingToDTO());
 
         // Public save entrypoint: calls AddNew or Update depending on Mode.
-        public bool Save()
+        public async Task<bool> SaveAsync()
         {
             switch (Mode)
             {
                 case EnMode.AddNew:
-                    if (AddNew()) { Mode = EnMode.Update; return true; }
+                    if (await AddNewAsync()) { Mode = EnMode.Update; return true; }
                     return false;
                 case EnMode.Update:
-                    return Update();
+                    return await UpdateAsync();
             }
 
             return false;

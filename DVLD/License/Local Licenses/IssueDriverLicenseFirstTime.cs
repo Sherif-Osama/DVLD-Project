@@ -11,14 +11,20 @@ namespace DVLD.License.Local_Licenses
         public event RefreshForm RefreshFormData;
 
         private ClsLocalDrivingLicenseApplication LocalLicenseApplication;
-
+        int LocalDrivingLicenseApplicationID;
         public IssueDriverLicenseFirstTime(int LocalDrivingLicenseApplicationID)
         {
             InitializeComponent();
-            LocalLicenseApplication = ClsLocalDrivingLicenseApplication.Find(LocalDrivingLicenseApplicationID);
+            this.LocalDrivingLicenseApplicationID = LocalDrivingLicenseApplicationID;
         }
 
-        private void btnIssueLicense_Click(object sender, EventArgs e)
+        private async void IssueDriverLicenseFirstTime_Load(object sender, EventArgs e)
+        {
+            LocalLicenseApplication = await ClsLocalDrivingLicenseApplication.FindAsync(LocalDrivingLicenseApplicationID);
+            await ctrlDrivingLicenseApplicationInfo1.LoadApplicationDataAsync(LocalLicenseApplication.LocalDrivingLicenseApplicationID);
+        }
+
+        private async void btnIssueLicense_Click(object sender, EventArgs e)
         {
             if (MessageBox.Show("Are you sure you want to issue license", "Confirmation", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
             {
@@ -26,10 +32,11 @@ namespace DVLD.License.Local_Licenses
                 {
                     string Notes = richTextBox1.Text.Trim();
 
-                    if (LocalLicenseApplication.IssueLicense(Notes, ClsGlobal.CurrentUser.UserID))
+                    if (await LocalLicenseApplication.IssueLicenseAsync(Notes, ClsGlobal.CurrentUser.UserID))
                     {
                         MessageBox.Show("License issued successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         RefreshFormData?.Invoke();
+
                     }
                     else
                         MessageBox.Show("An error occurred while issuing the license, please try again later.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -41,8 +48,6 @@ namespace DVLD.License.Local_Licenses
                 }
             }
         }
-
-        private void IssueDriverLicenseFirstTime_Load(object sender, EventArgs e) => ctrlDrivingLicenseApplicationInfo1.SetApplicationData(LocalLicenseApplication.LocalDrivingLicenseApplicationID);
 
         private void btnClose_Click(object sender, EventArgs e)
         {

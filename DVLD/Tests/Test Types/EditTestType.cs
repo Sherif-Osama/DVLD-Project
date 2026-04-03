@@ -21,10 +21,10 @@ namespace DVLD.Tests.Test_Types
         }
 
         // Event handler triggered when the form is loaded
-        private void EditTestType_Load(object sender, EventArgs e)
+        private async void EditTestType_Load(object sender, EventArgs e)
         {
             // Load test type data using Business Layer
-            TestTypes = ClsTestTypes.Find(TestTypeID);
+            TestTypes = await ClsTestTypes.FindAsync(TestTypeID);
 
             // Display data in form fields if found
             if (TestTypes != null)
@@ -42,7 +42,7 @@ namespace DVLD.Tests.Test_Types
         }
 
         // Triggered when the Save button is clicked
-        private void btnSave_Click(object sender, EventArgs e)
+        private async void btnSave_Click(object sender, EventArgs e)
         {
             // Validate required input fields before saving
             if (ClsValidation.ValidateEmptyTextBoxes(errorProvider1, this))
@@ -53,7 +53,7 @@ namespace DVLD.Tests.Test_Types
                 TestTypes.Fees = float.TryParse(txtFees.Text.ToString(), out float Fees) ? Fees : TestTypes.Fees;
 
                 // Attempt to save updated data
-                if (TestTypes.Save())
+                if (await TestTypes.SaveAsync())
                 {
                     MessageBox.Show("Saved successfully", "", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }

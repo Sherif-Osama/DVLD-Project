@@ -5,6 +5,7 @@ using DVLD.License.Local_Licenses;
 using DVLD.Tests.Test_Types;
 using System;
 using System.ComponentModel;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace DVLD.Applications.Local_driving_license
@@ -13,23 +14,20 @@ namespace DVLD.Applications.Local_driving_license
     // (add/edit, view details, schedule tests, issue license, cancel/delete).
     public partial class ListLocalDrivingLicesnseApplications : Form
     {
-        public ListLocalDrivingLicesnseApplications()
-        {
-            InitializeComponent();
-        }
+        public ListLocalDrivingLicesnseApplications() => InitializeComponent();
 
         #region Load & Refresh
         // Form load: populate grid and initialize filter control.
-        private void ListLocalDrivingLicesnseApplications_Load(object sender, EventArgs e)
+        private async void ListLocalDrivingLicesnseApplications_Load(object sender, EventArgs e)
         {
-            RefreshDataGridView();
+            await RefreshDataGridViewAsync();
             LoadFilterData();
         }
 
         // Refresh the DataGridView data source and set column headers / widths.
-        private void RefreshDataGridView()
+        private async Task RefreshDataGridViewAsync()
         {
-            dgvLocalDrivingLicenseApplications.DataSource = ClsLocalDrivingLicenseApplication.GetAllLocalDrivingLicenseApplication();
+            dgvLocalDrivingLicenseApplications.DataSource = await ClsLocalDrivingLicenseApplication.GetAllLocalDrivingLicenseApplicationAsync();
 
             dgvLocalDrivingLicenseApplications.Columns[0].HeaderText = "ID";
             dgvLocalDrivingLicenseApplications.Columns[0].Width = 50;
@@ -64,22 +62,22 @@ namespace DVLD.Applications.Local_driving_license
         }
         #endregion
 
-        private void btnAddNewApplication_Click(object sender, EventArgs e)
+        private async void btnAddNewApplication_Click(object sender, EventArgs e)
         {
             AddUpdateLocalDrivingLicenseApplication AddLocalDriving = new AddUpdateLocalDrivingLicenseApplication();
-            AddLocalDriving.RefreshFormData += RefreshDataGridView;
+            AddLocalDriving.RefreshFormData += async () => await RefreshDataGridViewAsync();
             AddLocalDriving.ShowDialog();
         }
 
         #region Context Menu Opening
         // When context menu opens, enable/disable items based on selected application state
         // (license issued, application status, passed tests, etc.).
-        private void cmsApplications_Opening(object sender, CancelEventArgs e)
+        private async void cmsApplications_Opening(object sender, CancelEventArgs e)
         {
             if (int.TryParse(dgvLocalDrivingLicenseApplications?.CurrentRow?.Cells[0]?.Value?.ToString(), out int LocalDrivingLicenseID))
             {
-                ClsLocalDrivingLicenseApplication LocalDrivingLicenseApplication = ClsLocalDrivingLicenseApplication.Find(LocalDrivingLicenseID);
-                bool LicenseExists = LocalDrivingLicenseApplication.IsLicenseIssued();
+                ClsLocalDrivingLicenseApplication LocalDrivingLicenseApplication = await ClsLocalDrivingLicenseApplication.FindAsync(LocalDrivingLicenseID);
+                bool LicenseExists = await LocalDrivingLicenseApplication.IsLicenseIssuedAsync();
 
                 showLicenseToolStripMenuItem.Enabled = LicenseExists;
                 ScheduleTestsMenue.Enabled = !LicenseExists;
@@ -89,11 +87,11 @@ namespace DVLD.Applications.Local_driving_license
                 DeleteApplicationToolStripMenuItem.Enabled = (LocalDrivingLicenseApplication.ApplicationStatus == ClsApplications.EnApplicationStatus.New);
 
                 // Enable issuing license only when all required tests are passed and license not yet issued.
-                issueDrivingLicenseFirstTimeToolStripMenuItem.Enabled = (LocalDrivingLicenseApplication.GetPassedTestsCount() == 3) && !LicenseExists;
+                issueDrivingLicenseFirstTimeToolStripMenuItem.Enabled = (await LocalDrivingLicenseApplication.GetPassedTestsCountAsync() == 3) && !LicenseExists;
 
-                bool PassedVisionTest = LocalDrivingLicenseApplication.HasPassedTestType((int)ClsTestTypes.EnTestType.VisionTest);
-                bool PassedWrittenTest = LocalDrivingLicenseApplication.HasPassedTestType((int)ClsTestTypes.EnTestType.WrittenTest);
-                bool PassedStreetTest = LocalDrivingLicenseApplication.HasPassedTestType((int)ClsTestTypes.EnTestType.StreetTest);
+                bool PassedVisionTest = await LocalDrivingLicenseApplication.HasPassedTestTypeAsync((int)ClsTestTypes.EnTestType.VisionTest);
+                bool PassedWrittenTest = await LocalDrivingLicenseApplication.HasPassedTestTypeAsync((int)ClsTestTypes.EnTestType.WrittenTest);
+                bool PassedStreetTest = await LocalDrivingLicenseApplication.HasPassedTestTypeAsync((int)ClsTestTypes.EnTestType.StreetTest);
 
                 // Enable scheduling only when some required tests are not passed and application is new.
                 ScheduleTestsMenue.Enabled = (!PassedVisionTest || !PassedWrittenTest || !PassedStreetTest) && (LocalDrivingLicenseApplication.ApplicationStatus == ClsApplications.EnApplicationStatus.New);
@@ -115,7 +113,7 @@ namespace DVLD.Applications.Local_driving_license
         }
 
         // Open application details dialog for selected application.
-        private void showDetailsToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void showDetailsToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (int.TryParse(dgvLocalDrivingLicenseApplications?.CurrentRow?.Cells[0].Value.ToString(), out int AppID))
             {
@@ -130,12 +128,12 @@ namespace DVLD.Applications.Local_driving_license
         }
 
         // Edit selected application: open edit dialog and refresh list.
-        private void editToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void editToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (int.TryParse(dgvLocalDrivingLicenseApplications?.CurrentRow?.Cells[0]?.Value?.ToString(), out int ID))
             {
                 AddUpdateLocalDrivingLicenseApplication Edit = new AddUpdateLocalDrivingLicenseApplication(ID);
-                Edit.RefreshFormData += RefreshDataGridView;
+                Edit.RefreshFormData += async () => await RefreshDataGridViewAsync();
                 Edit.ShowDialog();
             }
             else
@@ -144,19 +142,19 @@ namespace DVLD.Applications.Local_driving_license
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
-        private void DeleteApplicationToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void DeleteApplicationToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (MessageBox.Show("Are you sure you want to delete this application?", "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
             {
                 if (int.TryParse(dgvLocalDrivingLicenseApplications?.CurrentRow?.Cells[0]?.Value?.ToString(), out int LocalLicenseID))
                 {
-                    ClsLocalDrivingLicenseApplication LocalDrivingLicenseApplication = ClsLocalDrivingLicenseApplication.Find(LocalLicenseID);
+                    ClsLocalDrivingLicenseApplication LocalDrivingLicenseApplication = await ClsLocalDrivingLicenseApplication.FindAsync(LocalLicenseID);
                     if (LocalDrivingLicenseApplication != null)
                     {
-                        if (LocalDrivingLicenseApplication.Delete())
+                        if (await LocalDrivingLicenseApplication.DeleteAsync())
                         {
                             MessageBox.Show("Application deleted Successfully.", "Deleted", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                            RefreshDataGridView();
+                            await RefreshDataGridViewAsync();
                             LoadFilterData();
                         }
                         else
@@ -169,19 +167,19 @@ namespace DVLD.Applications.Local_driving_license
         }
 
 
-        private void CancelApplicationToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void CancelApplicationToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (MessageBox.Show("Are you sure you want to cancel this application?", "Confirm Cancellation", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
             {
                 if (int.TryParse(dgvLocalDrivingLicenseApplications?.CurrentRow?.Cells[0]?.Value?.ToString(), out int LocalLicenseID))
                 {
-                    ClsLocalDrivingLicenseApplication LocalDrivingLicenseApplication = ClsLocalDrivingLicenseApplication.Find(LocalLicenseID);
+                    ClsLocalDrivingLicenseApplication LocalDrivingLicenseApplication = await ClsLocalDrivingLicenseApplication.FindAsync(LocalLicenseID);
                     if (LocalDrivingLicenseApplication != null)
                     {
-                        if (LocalDrivingLicenseApplication.Cancel())
+                        if (await LocalDrivingLicenseApplication.CancelAsync())
                         {
                             MessageBox.Show("Application Cancelled Successfully.", "Cancelled", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                            RefreshDataGridView();
+                            await RefreshDataGridViewAsync();
                             LoadFilterData();
                         }
                         else
@@ -195,14 +193,14 @@ namespace DVLD.Applications.Local_driving_license
 
         #region scheduleTest
         // Helper to open the test appointments list for the selected application and test type.
-        void ScheduleTest(ClsTestTypes.EnTestType Type)
+        private async Task ScheduleTest(ClsTestTypes.EnTestType Type)
         {
             if (int.TryParse(dgvLocalDrivingLicenseApplications.CurrentRow.Cells[0].Value.ToString(), out int AplicationID))
             {
                 ListTestAppointments listTestAppointments = new ListTestAppointments(AplicationID, Type);
                 listTestAppointments.ShowDialog();
                 LoadFilterData();
-                RefreshDataGridView();
+                await RefreshDataGridViewAsync();
             }
             else
             {
@@ -211,34 +209,34 @@ namespace DVLD.Applications.Local_driving_license
             }
         }
 
-        private void scheduleVisionTestToolStripMenuItem_Click(object sender, EventArgs e) => ScheduleTest(ClsTestTypes.EnTestType.VisionTest);
+        private async void scheduleVisionTestToolStripMenuItem_Click(object sender, EventArgs e) => await ScheduleTest(ClsTestTypes.EnTestType.VisionTest);
 
         // Menu handlers to schedule specific test types and refresh after returning.
-        private void scheduleWrittenTestToolStripMenuItem_Click_1(object sender, EventArgs e) => ScheduleTest(ClsTestTypes.EnTestType.WrittenTest);
+        private async void scheduleWrittenTestToolStripMenuItem_Click_1(object sender, EventArgs e) => await ScheduleTest(ClsTestTypes.EnTestType.WrittenTest);
 
-        private void scheduleStreetTestToolStripMenuItem_Click_1(object sender, EventArgs e) => ScheduleTest(ClsTestTypes.EnTestType.StreetTest);
+        private async void scheduleStreetTestToolStripMenuItem_Click_1(object sender, EventArgs e) => await ScheduleTest(ClsTestTypes.EnTestType.StreetTest);
         #endregion
 
-        private void issueDrivingLicenseFirstTimeToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void issueDrivingLicenseFirstTimeToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (int.TryParse(dgvLocalDrivingLicenseApplications?.CurrentRow?.Cells[0]?.Value?.ToString(), out int LocalLicenseID))
             {
                 IssueDriverLicenseFirstTime Issue = new IssueDriverLicenseFirstTime(LocalLicenseID);
                 // refresh after issuing license
-                Issue.RefreshFormData += RefreshDataGridView;
+                Issue.RefreshFormData += async () => await RefreshDataGridViewAsync();
                 Issue.ShowDialog();
             }
         }
 
-        private void showLicenseToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void showLicenseToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (int.TryParse(dgvLocalDrivingLicenseApplications?.CurrentRow?.Cells[0]?.Value?.ToString(), out int LocalDrivingLicenseApplicationID))
             {
-                ClsLocalDrivingLicenseApplication LocalLicenseApplication = ClsLocalDrivingLicenseApplication.Find(LocalDrivingLicenseApplicationID);
+                ClsLocalDrivingLicenseApplication LocalLicenseApplication = await ClsLocalDrivingLicenseApplication.FindAsync(LocalDrivingLicenseApplicationID);
 
                 if (LocalLicenseApplication != null)
                 {
-                    ClsLicenses License = ClsLicenses.FindByApplicationID(LocalLicenseApplication.ApplicationID);
+                    ClsLicenses License = await ClsLicenses.FindByApplicationIDAsync(LocalLicenseApplication.ApplicationID);
 
                     if (License != null)
                     {
@@ -258,11 +256,11 @@ namespace DVLD.Applications.Local_driving_license
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
-        private void showPersonLicenseHistoryToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void showPersonLicenseHistoryToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (dgvLocalDrivingLicenseApplications?.CurrentRow?.Cells[2]?.Value?.ToString() is string NationalNo)
             {
-                ClsPerson personInfo = ClsPerson.Find(NationalNo);
+                ClsPerson personInfo = await ClsPerson.FindAsync(NationalNo);
 
                 if (personInfo != null)
                 {

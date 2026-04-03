@@ -3,6 +3,7 @@ using DVLD.Global_classes;
 using DVLD.License;
 using DVLD.License.Local_Licenses.Controls;
 using System;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace DVLD.Applications.Renew_Local_License
@@ -17,23 +18,23 @@ namespace DVLD.Applications.Renew_Local_License
         ClsLicenses CurrentLicense;
         ClsLicenses NewLicenses;
 
-        private void RenewLocalLicense_Load(object sender, EventArgs e)
+        private async void RenewLocalLicense_Load(object sender, EventArgs e)
         {
             lblApplicationDate.Text = DateTime.Now.ToString("MM/dd/yyyy");
             lblIssueDate.Text = lblApplicationDate.Text;
             lblExpirationDate.Text = "???";
-            lblApplicationFees.Text = ClsApplicationsTypes.Find((int)ClsApplications.EnApplicationType.RenewDrivingLicense)?.Fees.ToString() ?? "Unknown";
+            lblApplicationFees.Text = (await ClsApplicationsTypes.FindAsync((int)ClsApplications.EnApplicationType.RenewDrivingLicense))?.Fees.ToString() ?? "Unknown";
             lblCreatedByUser.Text = ClsGlobal.CurrentUser.UserName;
         }
 
-        private void btnRenewLicense_Click(object sender, EventArgs e)
+        private async void btnRenewLicense_Click(object sender, EventArgs e)
         {
             if (MessageBox.Show("Are you sure you want to Renew the license?", "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
             {
                 if (CurrentLicense != null)
                 {
                     string Note = string.IsNullOrEmpty(txtNotes.Text.Trim()) ? string.Empty : txtNotes.Text.Trim();
-                    NewLicenses = CurrentLicense.RenewLicense(Note, ClsGlobal.CurrentUser.UserID);
+                    NewLicenses = await CurrentLicense.RenewLicenseAsync(Note, ClsGlobal.CurrentUser.UserID);
 
                     if (NewLicenses != null)
                     {
@@ -42,7 +43,7 @@ namespace DVLD.Applications.Renew_Local_License
                         MessageBox.Show("License renewed successfully! New Expiration Date: "
                             + NewLicenses.ExpirationDate.ToShortDateString() + " New License ID = " + NewLicenses.LicenseID.ToString()
                             , "Renewal Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        LoadApplicationInfo();
+                        await LoadApplicationInfoAsync();
                     }
                     else
                     {
@@ -60,7 +61,7 @@ namespace DVLD.Applications.Renew_Local_License
             }
         }
 
-        private void LoadApplicationInfo()
+        private async Task LoadApplicationInfoAsync()
         {
             if (NewLicenses != null)
             {
@@ -69,7 +70,7 @@ namespace DVLD.Applications.Renew_Local_License
                 lblApplicationID.Text = NewLicenses.ApplicationID.ToString();
                 lblExpirationDate.Text = NewLicenses.ExpirationDate.ToString("MM/dd/yyyy");
                 lblLicenseFees.Text = NewLicenses.LicenseClassesInfo?.ClassFees.ToString() ?? "Unknown";
-                lblTotalFees.Text = (ClsApplicationsTypes.Find((int)ClsApplications.EnApplicationType.RenewDrivingLicense)?.Fees + (NewLicenses.LicenseClassesInfo?.ClassFees ?? 0)).ToString();
+                lblTotalFees.Text = ((await ClsApplicationsTypes.FindAsync((int)ClsApplications.EnApplicationType.RenewDrivingLicense))?.Fees + (NewLicenses.LicenseClassesInfo?.ClassFees ?? 0)).ToString();
             }
         }
 
@@ -107,11 +108,11 @@ namespace DVLD.Applications.Renew_Local_License
                 MessageBox.Show("New license information is not available. Please renew the license to view its details.", "License Information Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
-        private void ctrlDriverLicenseInfoWithFilter1_LicenseSearchCompleted(object sender, ctrlDriverLicenseInfoWithFilter.FilterResult e)
+        private async void ctrlDriverLicenseInfoWithFilter1_LicenseSearchCompleted(object sender, ctrlDriverLicenseInfoWithFilter.FilterResult e)
         {
             if (e.IsFound)
             {
-                CurrentLicense = ClsLicenses.Find(e.LicenseID);
+                CurrentLicense = await ClsLicenses.FindAsync(e.LicenseID);
                 if (CurrentLicense != null)
                 {
                     llShowLicenseHistory.Enabled = true;

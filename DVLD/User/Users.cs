@@ -1,6 +1,7 @@
 ﻿using BusinessLayer;
 using DVLD.Global_classes;
 using System;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace DVLD.User
@@ -9,15 +10,12 @@ namespace DVLD.User
     {
         #region Initialization Components
         // Constructor initializes the form
-        public Users()
-        {
-            InitializeComponent();
-        }
+        public Users() => InitializeComponent();
 
         // Refreshes the DataGridView by reloading all users and filters
-        private void RefreshDataGridView()
+        private async Task RefreshDataGridView()
         {
-            dgvUsers.DataSource = ClsUser.GetAllUsersData();
+            dgvUsers.DataSource = await ClsUser.GetAllUsersDataAsync();
             LoadFilterData();
         }
         #endregion
@@ -25,16 +23,16 @@ namespace DVLD.User
         #region Load UI and Data
         // Triggered when the form is loaded
         // Loads users and initializes the filtering options
-        private void Users_Load(object sender, EventArgs e)
+        private async void Users_Load(object sender, EventArgs e)
         {
-            LoadUsersData();
+            await LoadUsersData();
             LoadFilterData();
         }
 
         // Loads all users into the DataGridView and sets column headers and widths
-        private void LoadUsersData()
+        private async Task LoadUsersData()
         {
-            dgvUsers.DataSource = ClsUser.GetAllUsersData();
+            dgvUsers.DataSource = await ClsUser.GetAllUsersDataAsync();
             int NumberOfRows = dgvUsers.Rows.Count;
             RecordsNumber.Text = NumberOfRows.ToString(); // Display total count
 
@@ -72,10 +70,10 @@ namespace DVLD.User
 
         #region Buttons Actions
         // Opens the Add User form
-        private void BtnAddNewUser_Click(object sender, EventArgs e)
+        private async void BtnAddNewUser_Click(object sender, EventArgs e)
         {
             AddOrUpdateUserForm AddNewUser = new AddOrUpdateUserForm();
-            AddNewUser.RefreshFormData += RefreshDataGridView; // Refresh data after adding
+            AddNewUser.RefreshFormData += async () => await RefreshDataGridView(); // Refresh data after adding
             AddNewUser.ShowDialog();
         }
 
@@ -100,13 +98,13 @@ namespace DVLD.User
             if (int.TryParse(dgvUsers.CurrentRow.Cells[0].Value.ToString(), out int ID))
             {
                 AddOrUpdateUserForm EditUser = new AddOrUpdateUserForm(ID);
-                EditUser.RefreshFormData += RefreshDataGridView; // Refresh data after editing
+                EditUser.RefreshFormData += async () => await RefreshDataGridView(); // Refresh data after editing
                 EditUser.ShowDialog();
             }
         }
 
         // Deletes the selected user from the database after confirmation
-        private void deleteToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void deleteToolStripMenuItem_Click(object sender, EventArgs e)
         {
             string UserIDMessage = dgvUsers.CurrentRow.Cells[0].Value.ToString();
 
@@ -115,15 +113,13 @@ namespace DVLD.User
             {
                 if (int.TryParse(dgvUsers.CurrentRow?.Cells[0]?.Value?.ToString(), out int UserID))
                 {
-                    if (ClsUser.Delete(UserID))
+                    if (await ClsUser.DeleteAsync(UserID))
                     {
                         MessageBox.Show("Deleted successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        RefreshDataGridView();
+                        await RefreshDataGridView();
                     }
                     else
-                    {
-                        MessageBox.Show("Failed", "The operation failed.", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
+                    { MessageBox.Show("Failed", "The operation failed.", MessageBoxButtons.OK, MessageBoxIcon.Error); }
                 }
                 else
                 {

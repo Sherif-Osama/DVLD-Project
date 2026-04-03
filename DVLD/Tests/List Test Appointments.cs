@@ -2,6 +2,7 @@
 using DVLD.Properties;
 using DVLD.Tests.Test_Appointments;
 using System;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace DVLD.Tests.Test_Types
@@ -27,21 +28,21 @@ namespace DVLD.Tests.Test_Types
             InitializeComponent();
             this.ApplicationID = ApplicationID;
             this.TestType = Type;
-            LocalDrivingLicenseApplication = ClsLocalDrivingLicenseApplication.Find(ApplicationID);
         }
 
         // Form load: setup UI for the selected test type and populate data.
-        private void ListTestAppointments_Load(object sender, EventArgs e)
+        private async void ListTestAppointments_Load(object sender, EventArgs e)
         {
-            ctrlDrivingLicenseApplicationInfo1.SetApplicationData(ApplicationID);
+            LocalDrivingLicenseApplication = await ClsLocalDrivingLicenseApplication.FindAsync(ApplicationID);
+            await ctrlDrivingLicenseApplicationInfo1.LoadApplicationDataAsync(ApplicationID);
             LoadTestTypeUI();
-            RefreshDataGridView();
+            await RefreshDataGridView();
         }
 
         // Refresh the grid with all appointments for this application and type; format columns if rows exist.
-        private void RefreshDataGridView()
+        private async Task RefreshDataGridView()
         {
-            dataGridView1.DataSource = ClsTestAppointments.GetAllApplicationTestAppointments(ApplicationID, (int)TestType);
+            dataGridView1.DataSource = await ClsTestAppointments.GetAllApplicationTestAppointmentsAsync(ApplicationID, (int)TestType);
             int RowsCount = dataGridView1?.Rows?.Count ?? 0;
 
             if (RowsCount > 0)
@@ -102,17 +103,17 @@ namespace DVLD.Tests.Test_Types
         }
         #endregion
 
-        private bool Validation()
+        private async Task<bool> Validation()
         {
             // Prevent adding if there is already an active appointment for this test.
-            if (LocalDrivingLicenseApplication.HasActiveAppointment((int)TestType))
+            if (await LocalDrivingLicenseApplication.HasActiveAppointmentAsync((int)TestType))
             {
                 MessageBox.Show("Person Already have an active appointment for this test, You cannot add new appointment", "Not allowed", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
             }
 
             // Prevent adding if the person has already passed this test.
-            if (LocalDrivingLicenseApplication.HasPassedTestType((int)TestType))
+            if (await LocalDrivingLicenseApplication.HasPassedTestTypeAsync((int)TestType))
             {
                 MessageBox.Show("Person has already passed this test, You cannot add new appointment", "Not allowed", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
@@ -123,30 +124,30 @@ namespace DVLD.Tests.Test_Types
 
         #region Buttons Events
         // Add appointment button click: validate and open scheduler dialog.
-        private void AddbutAppointments_Click(object sender, EventArgs e)
+        private async void AddbutAppointments_Click(object sender, EventArgs e)
         {
-            if (Validation())
+            if (await Validation())
             {
                 // Open schedule dialog for creating a new appointment and refresh the grid after.
                 ScheduleTest Schedule = new ScheduleTest(ApplicationID, -1, TestType);
                 Schedule.ShowDialog();
-                RefreshDataGridView();
+                await RefreshDataGridView();
             }
         }
         #endregion
 
         // Edit menu item: open scheduler for the selected appointment after validation.
-        private void editToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void editToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (int.TryParse(dataGridView1?.CurrentRow?.Cells[0]?.Value?.ToString(), out int AppointmentID))
             {
-                Appointment = ClsTestAppointments.Find(AppointmentID);
+                Appointment = await ClsTestAppointments.FindAsync(AppointmentID);
                 // Disallow editing if the person already passed this test.
                 if (Appointment != null && !Appointment.IsLocked)
                 {
                     ScheduleTest Schedule = new ScheduleTest(ApplicationID, Appointment.TestAppointmentID, TestType);
                     Schedule.ShowDialog();
-                    RefreshDataGridView();
+                    await RefreshDataGridView();
                 }
                 else
                 {
@@ -160,13 +161,13 @@ namespace DVLD.Tests.Test_Types
             }
         }
 
-        private void takeTestToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void takeTestToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // Try to get the selected appointment ID from the first cell of the current row.
             if (int.TryParse(dataGridView1?.CurrentRow?.Cells[0]?.Value?.ToString(), out int AppointmentID))
             {
                 // Load appointment details.
-                Appointment = ClsTestAppointments.Find(AppointmentID);
+                Appointment = await ClsTestAppointments.FindAsync(AppointmentID);
 
                 // Do not allow taking the test if the person already passed this test type.
                 if (Appointment != null)
@@ -174,9 +175,9 @@ namespace DVLD.Tests.Test_Types
                     // If appointment exists and is not locked, open the TakeTest dialog.
                     if (!Appointment.IsLocked)
                     {
-                        TakeTest TakeTast = new TakeTest(ApplicationID, Appointment.TestAppointmentID, TestType);
+                        TakeTest TakeTast = new TakeTest(Appointment.TestAppointmentID);
                         TakeTast.ShowDialog();
-                        RefreshDataGridView();
+                        await RefreshDataGridView();
                     }
                     else
                     {

@@ -2,6 +2,7 @@
 using DTO;
 using System;
 using System.Data;
+using System.Threading.Tasks;
 using System.Transactions;
 
 namespace BusinessLayer
@@ -30,6 +31,7 @@ namespace BusinessLayer
         public bool IsActive { set; get; }
         public int CreatedByUserID { get; set; }
         public EnIssueReason IssueReason { set; get; }
+        public bool IsDetained { get; private set; }
 
         // Human readable issue reason.
         public string IssueReasonText
@@ -51,9 +53,6 @@ namespace BusinessLayer
                 }
             }
         }
-
-        public bool IsDetained
-        { get => ClsDetainedLicenses.IsLicenseDetained(this.LicenseID); }
 
         // Default constructor for creating a new license (unsaved).
         public ClsLicenses()
@@ -78,9 +77,7 @@ namespace BusinessLayer
             this.LicenseID = licenseDTO.LicenseID;
             this.ApplicationID = licenseDTO.ApplicationID;
             this.DriverID = licenseDTO.DriverID;
-            this.DriverInfo = ClsDriver.Find(this.DriverID);
             this.LicenseClassID = licenseDTO.LicenseClassID;
-            this.LicenseClassesInfo = ClsLicenseClasses.Find(this.LicenseClassID);
             this.IssueDate = licenseDTO.IssueDate;
             this.ExpirationDate = licenseDTO.ExpirationDate;
             this.Notes = licenseDTO.Notes;
@@ -112,97 +109,120 @@ namespace BusinessLayer
         #region Find Methods
 
         // Data access helpers to fetch driver licenses or specific license records.
-        public static DataTable GetDriverLicenses(int DriverID) => ClsLicensesData.GetDriverLicenses(DriverID);
+        public static Task<DataTable> GetDriverLicensesAsync(int DriverID) => ClsLicensesData.GetDriverLicensesAsync(DriverID);
 
-        public static ClsLicenses FindByApplicationID(int ApplicationID)
+        private async Task LoadRelatedDataAsync()
         {
-            LicenseDTO LicenseDTO = ClsLicensesData.FindByApplicationID(ApplicationID);
-            if (LicenseDTO == null) { return null; }
-
-            return new ClsLicenses(LicenseDTO);
+            DriverInfo = await ClsDriver.FindAsync(this.DriverID);
+            LicenseClassesInfo = await ClsLicenseClasses.FindAsync(this.LicenseClassID);
+            IsDetained = await ClsDetainedLicenses.IsLicenseDetainedAsync(this.LicenseID);
         }
 
-        public static ClsLicenses Find(int LicenseID)
+        public static async Task<ClsLicenses> FindByApplicationIDAsync(int ApplicationID)
         {
-            LicenseDTO LicenseDTO = ClsLicensesData.Find(LicenseID);
+            LicenseDTO LicenseDTO = await ClsLicensesData.FindByApplicationIDAsync(ApplicationID);
             if (LicenseDTO == null) { return null; }
 
-            return new ClsLicenses(LicenseDTO);
+            ClsLicenses LicenseObj = new ClsLicenses(LicenseDTO);
+
+            await LicenseObj.LoadRelatedDataAsync();
+
+            return LicenseObj;
+        }
+
+        public static async Task<ClsLicenses> FindAsync(int LicenseID)
+        {
+            LicenseDTO LicenseDTO = await ClsLicensesData.FindAsync(LicenseID);
+            if (LicenseDTO == null) { return null; }
+
+            ClsLicenses LicenseObj = new ClsLicenses(LicenseDTO);
+
+            await LicenseObj.LoadRelatedDataAsync();
+
+            return LicenseObj;
         }
 
         // Find license by driver and class.
-        public static ClsLicenses Find(int DriverID, int LicenseClassID)
+        public static async Task<ClsLicenses> FindAsync(int DriverID, int LicenseClassID)
         {
-            LicenseDTO License = ClsLicensesData.Find(DriverID, LicenseClassID);
+            LicenseDTO LicenseDTO = await ClsLicensesData.FindAsync(DriverID, LicenseClassID);
 
-            if (License == null) { return null; }
+            if (LicenseDTO == null) { return null; }
 
-            return new ClsLicenses(License);
+            ClsLicenses LicenseObj = new ClsLicenses(LicenseDTO);
+
+            await LicenseObj.LoadRelatedDataAsync();
+
+            return LicenseObj;
         }
 
         // Find active license for driver and class.
-        public static ClsLicenses FindActiveLicenseByDriverID(int DriverID, int LicenseClassID)
+        public static async Task<ClsLicenses> FindActiveLicenseByDriverIDAsync(int DriverID, int LicenseClassID)
         {
-            LicenseDTO License = ClsLicensesData.FindActiveLicenseByDriverID(DriverID, LicenseClassID);
+            LicenseDTO LicenseDTO = await ClsLicensesData.FindActiveLicenseByDriverIDAsync(DriverID, LicenseClassID);
 
-            if (License == null) { return null; }
+            if (LicenseDTO == null) { return null; }
 
-            return new ClsLicenses(License);
+            ClsLicenses LicenseObj = new ClsLicenses(LicenseDTO);
+
+            await LicenseObj.LoadRelatedDataAsync();
+
+            return LicenseObj;
         }
         #endregion
 
         #region Check License Existence
         // Helpers that query the data layer to check if licenses exist.
-        public static bool IsLicenseExist(int Person, int LicenseClassID)
+        public static async Task<bool> IsLicenseExistAsync(int Person, int LicenseClassID)
         {
             if (LicenseClassID <= 0) { return false; }
-            return ClsLicensesData.IsLicenseExist(Person, LicenseClassID);
+            return await ClsLicensesData.IsLicenseExistAsync(Person, LicenseClassID);
         }
 
-        public static bool HasLicense(int DriverID, int LicenseClassID)
+        public static async Task<bool> HasLicenseAsync(int DriverID, int LicenseClassID)
         {
             if (DriverID == -1) { return false; }
-            return ClsLicensesData.HasLicense(DriverID, LicenseClassID);
+            return await ClsLicensesData.HasLicenseAsync(DriverID, LicenseClassID);
         }
 
-        public static bool HasActiveLicense(int Driver, int LicenseClassID)
+        public static async Task<bool> HasActiveLicenseAsync(int Driver, int LicenseClassID)
         {
             if (Driver == -1) { return false; }
-            return ClsLicensesData.HasActiveLicense(Driver, LicenseClassID);
+            return await ClsLicensesData.HasActiveLicenseAsync(Driver, LicenseClassID);
         }
 
         #endregion
-        private bool AddNew()
+        private async Task<bool> AddNewAsync()
         {
-            this.LicenseID = ClsLicensesData.AddNew(MappingToDTO());
+            this.LicenseID = await ClsLicensesData.AddNewAsync(MappingToDTO());
             return this.LicenseID != -1;
         }
 
-        private bool Update() => ClsLicensesData.Update(MappingToDTO());
+        private Task<bool> UpdateAsync() => ClsLicensesData.UpdateAsync(MappingToDTO());
 
-        private bool BusinessRules()
+        private async Task<bool> BusinessRulesAsync()
         {
             if (Mode == EnMode.AddNew)
             {
-                return !HasActiveLicense(this.DriverID, this.LicenseClassID);
+                return !await HasActiveLicenseAsync(this.DriverID, this.LicenseClassID);
             }
-            else if (Mode == EnMode.Update) { return HasLicense(this.DriverID, this.LicenseClassID); }
+            else if (Mode == EnMode.Update) { return await HasLicenseAsync(this.DriverID, this.LicenseClassID); }
 
             return false;
         }
 
         // Save entry point that validates business rules and performs add or update.
-        public bool Save()
+        public async Task<bool> SaveAsync()
         {
-            if (BusinessRules())
+            if (await BusinessRulesAsync())
             {
                 switch (this.Mode)
                 {
                     case EnMode.AddNew:
-                        if (AddNew()) { this.Mode = EnMode.Update; return true; }
+                        if (await AddNewAsync()) { this.Mode = EnMode.Update; return true; }
                         return false;
                     case EnMode.Update:
-                        return Update();
+                        return await UpdateAsync();
                 }
             }
             return false;
@@ -210,7 +230,7 @@ namespace BusinessLayer
 
         #region Renew/Replace License Method
         // Create an application record for renewing a license.
-        private ClsApplications CreateRenewApplication(int RenewByUserID)
+        private async Task<ClsApplications> CreateRenewApplicationAsync(int RenewByUserID)
         {
             if (this.DriverInfo != null)
             {
@@ -221,7 +241,7 @@ namespace BusinessLayer
                     ApplicationType = ClsApplications.EnApplicationType.RenewDrivingLicense,
                     ApplicationTypeID = (int)ClsApplications.EnApplicationType.RenewDrivingLicense,
                     LastStatusDate = DateTime.Now,
-                    PaidFees = Convert.ToSingle(ClsApplicationsTypes.Find((int)ClsApplications.EnApplicationType.RenewDrivingLicense)?.Fees ?? -1),
+                    PaidFees = Convert.ToSingle((await ClsApplicationsTypes.FindAsync((int)ClsApplications.EnApplicationType.RenewDrivingLicense))?.Fees ?? -1),
                     CreatedByUserID = RenewByUserID,
                     ApplicationStatus = ClsApplications.EnApplicationStatus.New,
                 };
@@ -229,40 +249,47 @@ namespace BusinessLayer
             return null;
         }
 
-        public bool DeactivateCurrentLicense()
+        public async Task<bool> DeactivateCurrentLicenseAsync()
         {
-            if (this.IsActive) { return ClsLicensesData.DeactivateCurrentLicense(this.LicenseID); }
+            if (this.IsActive) { return await ClsLicensesData.DeactivateCurrentLicenseAsync(this.LicenseID); }
             return true;
         }
+        private async Task<ClsLicenses> CreateNewLicenseAsync(EnIssueReason IssueReason, int CreateByUserID, int ApplicationID, string Note = "")
+        {
+            ClsLicenses NewLicense = new ClsLicenses();
 
-        public ClsLicenses RenewLicense(string Note, int RenewByUserID)
+            NewLicense.ApplicationID = ApplicationID;
+            NewLicense.DriverID = this.DriverID;
+            NewLicense.LicenseClassID = this.LicenseClassID;
+            NewLicense.IssueDate = DateTime.Now;
+            ClsLicenseClasses NewLicenseClasses = this.LicenseClassesInfo ?? await ClsLicenseClasses.FindAsync(this.LicenseClassID);
+            NewLicense.ExpirationDate = DateTime.Now.AddYears(NewLicenseClasses.DefaultValidityLength);
+            NewLicense.Notes = Note;
+            NewLicense.PaidFees = NewLicenseClasses?.ClassFees ?? -1;
+            NewLicense.IsActive = true;
+            NewLicense.IssueReason = IssueReason;
+            NewLicense.CreatedByUserID = CreateByUserID;
+
+            return NewLicense;
+        }
+
+        public async Task<ClsLicenses> RenewLicenseAsync(string Note, int RenewByUserID)
         {
             if (this.ExpirationDate < DateTime.Now)
             {
-                using (TransactionScope Scope = new TransactionScope())
+                using (TransactionScope Scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
                 {
-                    ClsApplications RenewApplication = CreateRenewApplication(RenewByUserID);
-                    if (RenewApplication != null && RenewApplication.Save())
+                    ClsApplications RenewApplication = await CreateRenewApplicationAsync(RenewByUserID);
+                    if (RenewApplication != null && await RenewApplication.SaveAsync())
                     {
-                        ClsLicenses NewLicense = new ClsLicenses();
 
-                        NewLicense.ApplicationID = RenewApplication.ApplicationID;
-                        NewLicense.DriverID = this.DriverID;
-                        NewLicense.LicenseClassID = this.LicenseClassID;
-                        NewLicense.IssueDate = DateTime.Now;
-                        NewLicense.ExpirationDate = DateTime.Now.AddYears(this.LicenseClassesInfo.DefaultValidityLength);
-                        NewLicense.Notes = Note;
-                        NewLicense.PaidFees = this.LicenseClassesInfo?.ClassFees ?? -1;
-                        NewLicense.IsActive = true;
-                        NewLicense.IssueReason = ClsLicenses.EnIssueReason.Renew;
-                        NewLicense.CreatedByUserID = this.CreatedByUserID;
-
+                        ClsLicenses NewLicense = await CreateNewLicenseAsync(EnIssueReason.Renew, RenewByUserID, RenewApplication.ApplicationID, Note);
                         // Deactivate the old license before saving the new one.
-                        if (this.DeactivateCurrentLicense())
+                        if (await this.DeactivateCurrentLicenseAsync())
                         {
-                            if (NewLicense.Save())
+                            if (await NewLicense.SaveAsync())
                             {
-                                if (RenewApplication.SetComplete())
+                                if (await RenewApplication.SetCompleteAsync())
                                 { Scope.Complete(); return NewLicense; }
                                 else
                                 { return null; }
@@ -276,7 +303,7 @@ namespace BusinessLayer
             return null;
         }
 
-        private ClsApplications CreateReplacementApplication(int CreateByUserID, EnIssueReason IssueReason)
+        private async Task<ClsApplications> CreateReplacementApplication(int CreateByUserID, EnIssueReason IssueReason)
         {
             if (this.DriverInfo != null)
             {
@@ -287,7 +314,7 @@ namespace BusinessLayer
                 ReplacementApplication.ApplicationType = IssueReason == EnIssueReason.LostReplacement ? ClsApplications.EnApplicationType.ReplaceLostDrivingLicense : ClsApplications.EnApplicationType.ReplaceDamagedDrivingLicense;
                 ReplacementApplication.ApplicationTypeID = (int)ReplacementApplication.ApplicationType;
                 ReplacementApplication.LastStatusDate = DateTime.Now;
-                ReplacementApplication.PaidFees = Convert.ToSingle(ClsApplicationsTypes.Find(ReplacementApplication.ApplicationTypeID)?.Fees ?? -1);
+                ReplacementApplication.PaidFees = Convert.ToSingle((await ClsApplicationsTypes.FindAsync(ReplacementApplication.ApplicationTypeID))?.Fees ?? -1);
                 ReplacementApplication.CreatedByUserID = CreateByUserID;
                 ReplacementApplication.ApplicationStatus = ClsApplications.EnApplicationStatus.New;
 
@@ -297,36 +324,22 @@ namespace BusinessLayer
             return null;
         }
 
-        public ClsLicenses Replace(EnIssueReason IssueReason, int CreatedByUserID)
+        public async Task<ClsLicenses> ReplaceAsync(EnIssueReason IssueReason, int CreatedByUserID)
         {
             if (this.IsActive)
             {
-                using (TransactionScope Scope = new TransactionScope())
+                using (TransactionScope Scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
                 {
-                    ClsApplications ReplacementAppliction = CreateReplacementApplication(CreatedByUserID, IssueReason);
-                    if (ReplacementAppliction != null && ReplacementAppliction.Save())
+                    ClsApplications ReplacementAppliction = await CreateReplacementApplication(CreatedByUserID, IssueReason);
+                    if (ReplacementAppliction != null && await ReplacementAppliction.SaveAsync())
                     {
-                        ClsLicenses NewLicense = new ClsLicenses();
-
-                        NewLicense.ApplicationID = ReplacementAppliction.ApplicationID;
-                        NewLicense.DriverID = this.DriverID;
-                        NewLicense.LicenseClassID = this.LicenseClassID;
-                        NewLicense.IssueDate = DateTime.Now;
-
-                        NewLicense.ExpirationDate = this.ExpirationDate;
-                        NewLicense.Notes = this.Notes;
-                        NewLicense.PaidFees = this.PaidFees;
-                        NewLicense.IsActive = this.IsActive;
-                        NewLicense.IssueReason = IssueReason;
-                        NewLicense.CreatedByUserID = this.CreatedByUserID;
-
-
+                        ClsLicenses NewLicense = await CreateNewLicenseAsync(IssueReason, CreatedByUserID, ReplacementAppliction.ApplicationID);
                         // Deactivate the old license before saving the replacement.
-                        if (this.DeactivateCurrentLicense())
+                        if (await this.DeactivateCurrentLicenseAsync())
                         {
-                            if (NewLicense.Save())
+                            if (await NewLicense.SaveAsync())
                             {
-                                if (ReplacementAppliction.SetComplete())
+                                if (await ReplacementAppliction.SetCompleteAsync())
                                 { Scope.Complete(); return NewLicense; }
                                 else
                                 { return null; }
@@ -343,7 +356,7 @@ namespace BusinessLayer
 
         #region detain/Release License Method
 
-        public int Detain(float FineFees, int CreatedByUserID)
+        public async Task<int> DetainAsync(float FineFees, int CreatedByUserID)
         {
             if (!this.IsDetained)
             {
@@ -353,7 +366,7 @@ namespace BusinessLayer
                 DetainedLicense.FineFees = Convert.ToSingle(FineFees);
                 DetainedLicense.CreatedByUserID = CreatedByUserID;
 
-                if (DetainedLicense.Save())
+                if (await DetainedLicense.SaveAsync())
                 {
                     return DetainedLicense.DetainID;
                 }
@@ -363,7 +376,7 @@ namespace BusinessLayer
             { return -1; }
         }
 
-        private ClsApplications CreateReleaseApplication(int ReleasedByUserID)
+        private async Task<ClsApplications> CreateReleaseApplicationAsync(int ReleasedByUserID)
         {
             if (this.DriverInfo != null)
             {
@@ -374,7 +387,7 @@ namespace BusinessLayer
                     ApplicationType = ClsApplications.EnApplicationType.ReleaseDetainedDrivingLicense,
                     ApplicationTypeID = (int)ClsApplications.EnApplicationType.ReleaseDetainedDrivingLicense,
                     LastStatusDate = DateTime.Now,
-                    PaidFees = Convert.ToSingle(ClsApplicationsTypes.Find((int)ClsApplications.EnApplicationType.ReleaseDetainedDrivingLicense)?.Fees ?? -1),
+                    PaidFees = Convert.ToSingle((await ClsApplicationsTypes.FindAsync((int)ClsApplications.EnApplicationType.ReleaseDetainedDrivingLicense))?.Fees ?? -1),
                     CreatedByUserID = ReleasedByUserID,
                     ApplicationStatus = ClsApplications.EnApplicationStatus.New,
                 };
@@ -382,22 +395,22 @@ namespace BusinessLayer
             return null;
         }
 
-        public bool Release(int ReleasedByUserID)
+        public async Task<bool> ReleaseAsync(int ReleasedByUserID)
         {
             if (this.IsDetained)
             {
-                using (TransactionScope Scope = new TransactionScope())
+                using (TransactionScope Scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
                 {
-                    ClsApplications ReleaseApplications = CreateReleaseApplication(ReleasedByUserID);
+                    ClsApplications ReleaseApplications = await CreateReleaseApplicationAsync(ReleasedByUserID);
 
-                    if (ReleaseApplications != null && ReleaseApplications.Save())
+                    if (ReleaseApplications != null && await ReleaseApplications.SaveAsync())
                     {
-                        ClsDetainedLicenses DetainedLicense = ClsDetainedLicenses.FindByLicenseID(this.LicenseID);
+                        ClsDetainedLicenses DetainedLicense = await ClsDetainedLicenses.FindByLicenseIDAsync(this.LicenseID);
                         if (DetainedLicense != null)
                         {
-                            if (DetainedLicense.Release(ReleasedByUserID, ReleaseApplications.ApplicationID))
+                            if (await DetainedLicense.ReleaseAsync(ReleasedByUserID, ReleaseApplications.ApplicationID))
                             {
-                                if (ReleaseApplications.SetComplete())
+                                if (await ReleaseApplications.SetCompleteAsync())
                                 { Scope.Complete(); return true; }
                                 else { return false; }
                             }

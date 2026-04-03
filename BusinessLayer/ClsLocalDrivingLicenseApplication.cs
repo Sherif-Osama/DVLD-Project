@@ -2,6 +2,7 @@
 using DTO;
 using System;
 using System.Data;
+using System.Threading.Tasks;
 using System.Transactions;
 
 namespace BusinessLayer
@@ -15,6 +16,7 @@ namespace BusinessLayer
         // Selected license class for this application (e.g., class 1,2,3).
         public int LicenseClassID { set; get; }
         public ClsLicenseClasses LicenseClassInfo { get; private set; }
+
         #region Constructors
         // Default ctor for creating a new application in AddNew mode.
         public ClsLocalDrivingLicenseApplication()
@@ -23,7 +25,6 @@ namespace BusinessLayer
             this.LicenseClassID = -1;
             this.ApplicationType = EnApplicationType.NewDrivingLicense;
             this.ApplicationTypeID = (int)ApplicationType;
-            this.ApplicationTypeInfo = ClsApplicationsTypes.Find(this.ApplicationTypeID);
         }
 
         // Private ctor used to build the business object from a DTO loaded from the database.
@@ -32,7 +33,6 @@ namespace BusinessLayer
             // Map DTO fields to the business object.
             this.LocalDrivingLicenseApplicationID = LDLADTO.LocalDrivingLicenseApplicationID;
             this.LicenseClassID = LDLADTO.LicenseClassID;
-            this.LicenseClassInfo = ClsLicenseClasses.Find(this.LicenseClassID);
             this.ApplicationID = LDLADTO.ApplicationID;
         }
         #endregion
@@ -49,60 +49,75 @@ namespace BusinessLayer
         }
 
         // Retrieve all local driving license applications (DataTable from DAL).
-        public static DataTable GetAllLocalDrivingLicenseApplication() => ClsLocalDrivingLicenseApplicationData.GetAllLocalDrivingLicenseApplication();
+        public static Task<DataTable> GetAllLocalDrivingLicenseApplicationAsync() => ClsLocalDrivingLicenseApplicationData.GetAllLocalDrivingLicenseApplicationAsync();
 
         #region Find Methods
-        // Find an active application for a person + license class.
-        public static ClsLocalDrivingLicenseApplication FindActiveApplication(int PersonID, int LicenseClassID)
+
+        private async Task LoadRelatedDataAsync()
         {
-            LocalDrivingLicenseApplicationDTO licenseApplicationDTO = ClsLocalDrivingLicenseApplicationData.FindActiveApplication(PersonID, LicenseClassID);
+            this.ApplicantPersonInfo = await ClsPerson.FindAsync(this.ApplicantPersonID);
+            this.CreatedByUserInfo = await ClsUser.FindAsync(this.CreatedByUserID);
+            this.LicenseClassInfo = await ClsLicenseClasses.FindAsync(this.LicenseClassID);
+            this.ApplicationTypeInfo = await ClsApplicationsTypes.FindAsync(this.ApplicationTypeID);
+        }
+
+        // Find an active application for a person + license class.
+        public static async Task<ClsLocalDrivingLicenseApplication> FindActiveApplicationAsync(int PersonID, int LicenseClassID)
+        {
+            LocalDrivingLicenseApplicationDTO LicenseApplicationDTO = await ClsLocalDrivingLicenseApplicationData.FindActiveApplicationAsync(PersonID, LicenseClassID);
 
             // Return null if not found.
-            if (licenseApplicationDTO == null) { return null; }
+            if (LicenseApplicationDTO == null) { return null; }
 
             // Build business object from DTO.
-            return new ClsLocalDrivingLicenseApplication(licenseApplicationDTO);
+            ClsLocalDrivingLicenseApplication LicenseApplicationObj = new ClsLocalDrivingLicenseApplication(LicenseApplicationDTO);
+
+            await LicenseApplicationObj.LoadRelatedDataAsync();
+
+            return LicenseApplicationObj;
         }
 
         // Find a local driving license application by its ID.
-        public static new ClsLocalDrivingLicenseApplication Find(int LocalDrivingLicenseApplicationID)
+        public static new async Task<ClsLocalDrivingLicenseApplication> FindAsync(int LocalDrivingLicenseApplicationID)
         {
-            LocalDrivingLicenseApplicationDTO licenseApplicationDTO = ClsLocalDrivingLicenseApplicationData.Find(LocalDrivingLicenseApplicationID);
+            LocalDrivingLicenseApplicationDTO LicenseApplicationDTO = await ClsLocalDrivingLicenseApplicationData.FindAsync(LocalDrivingLicenseApplicationID);
 
-            if (licenseApplicationDTO == null) { return null; }
+            if (LicenseApplicationDTO == null) { return null; }
 
-            return new ClsLocalDrivingLicenseApplication(licenseApplicationDTO);
+            ClsLocalDrivingLicenseApplication LicenseApplicationObj = new ClsLocalDrivingLicenseApplication(LicenseApplicationDTO);
+            await LicenseApplicationObj.LoadRelatedDataAsync();
+
+            return LicenseApplicationObj;
         }
 
         // Check whether a person already has an active application for a given license class.
-        public static bool HasActiveApplication(int PersonID, int LicenseClassID) => ClsLocalDrivingLicenseApplicationData.HasActiveApplication(PersonID, LicenseClassID);
+        public static Task<bool> HasActiveApplicationAsync(int PersonID, int LicenseClassID) => ClsLocalDrivingLicenseApplicationData.HasActiveApplicationAsync(PersonID, LicenseClassID);
         #endregion
 
         #region Addnew/Update/Delete Methods
         // Insert a new local driving license application (returns true on success).
-        private bool AddNew()
+        private async Task<bool> AddNewAsync()
         {
-            this.LocalDrivingLicenseApplicationID = ClsLocalDrivingLicenseApplicationData.AddNew(MappingToDTO());
+            this.LocalDrivingLicenseApplicationID = await ClsLocalDrivingLicenseApplicationData.AddNewAsync(MappingToDTO());
 
             // Success if DAL returned a valid ID.
             return (this.LocalDrivingLicenseApplicationID != -1);
         }
 
         // Update existing record via DAL.
-        private bool Update() => ClsLocalDrivingLicenseApplicationData.Update(MappingToDTO());
+        private Task<bool> UpdateAsync() => ClsLocalDrivingLicenseApplicationData.UpdateAsync(MappingToDTO());
 
         // Delete the application and its shared application record in a transaction.
-        public override bool Delete()
+        public override async Task<bool> DeleteAsync()
         {
-            using (TransactionScope Scope = new TransactionScope())
+            using (TransactionScope Scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
             {
                 // Delete local-specific data first.
-                if (!ClsLocalDrivingLicenseApplicationData.Delete(this.LocalDrivingLicenseApplicationID))
+                if (!await ClsLocalDrivingLicenseApplicationData.DeleteAsync(this.LocalDrivingLicenseApplicationID))
                 { return false; }
 
                 // Then delete shared application fields using base.Delete().
-                if (base.Delete()) { Scope.Complete(); ; return true; }
-
+                if (await base.DeleteAsync()) { Scope.Complete(); ; return true; }
                 return false;
             }
         }
@@ -110,15 +125,15 @@ namespace BusinessLayer
         // Business rules enforced before saving:
         // - When adding: person must not already have a license or an active application for the same class.
         // - When updating: either there is no other active application, or this object's ApplicationID matches the active application.
-        private bool BusinessRules()
+        private async Task<bool> BusinessRulesAsync()
         {
             if (Mode == EnMode.AddNew)
             {
-                return !ClsLicenses.IsLicenseExist(this.ApplicantPersonID, this.LicenseClassID) && !HasActiveApplication(this.ApplicantPersonID, this.LicenseClassID);
+                return !await ClsLicenses.IsLicenseExistAsync(this.ApplicantPersonID, this.LicenseClassID) && !await HasActiveApplicationAsync(this.ApplicantPersonID, this.LicenseClassID);
             }
             else if (Mode == EnMode.Update)
             {
-                ClsLocalDrivingLicenseApplication ActiveApplication = FindActiveApplication(this.ApplicantPersonID, this.LicenseClassID);
+                ClsLocalDrivingLicenseApplication ActiveApplication = await FindActiveApplicationAsync(this.ApplicantPersonID, this.LicenseClassID);
                 return (ActiveApplication == null || this.ApplicationID == ActiveApplication?.ApplicationID);
             }
 
@@ -127,27 +142,27 @@ namespace BusinessLayer
 
         // Save entry point: validates business rules, saves shared application fields (base.Save),
         // then inserts or updates local-driving-license-specific data within a transaction.
-        public override bool Save()
+        public override async Task<bool> SaveAsync()
         {
-            if (BusinessRules())
+            if (await BusinessRulesAsync())
             {
                 bool IsNew = (this.Mode == EnMode.AddNew);
 
-                using (TransactionScope Scope = new TransactionScope())
+                using (TransactionScope Scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
                 {
                     // Persist shared application fields first.
-                    if (!base.Save())
+                    if (!await base.SaveAsync())
                         return false;
 
                     // Then persist local-driving-license-specific data.
                     if (IsNew)
                     {
-                        if (AddNew()) { this.Mode = EnMode.Update; Scope.Complete(); return true; } // Switch to Update mode after successful insert
+                        if (await AddNewAsync()) { this.Mode = EnMode.Update; Scope.Complete(); return true; } // Switch to Update mode after successful insert
                         return false;
                     }
                     else
                     {
-                        if (Update()) { Scope.Complete(); return true; }
+                        if (await UpdateAsync()) { Scope.Complete(); return true; }
                         return false;
                     }
                 }
@@ -160,36 +175,36 @@ namespace BusinessLayer
         // Helpers to interact with test-related data for this application.
 
         // Number of passed tests for this application.
-        public int GetPassedTestsCount() => ClsTestData.GetPassedTestsCountForApplication(this.LocalDrivingLicenseApplicationID);
+        public Task<int> GetPassedTestsCountAsync() => ClsTestData.GetPassedTestsCountForApplicationAsync(this.LocalDrivingLicenseApplicationID);
 
         // Number of attempts for a specific test type.
-        public byte TestTrialCount(int TestTypeID) => ClsLocalDrivingLicenseApplicationData.TestTrialCount(this.LocalDrivingLicenseApplicationID, TestTypeID);
+        public Task<byte> TestTrialCountAsync(int TestTypeID) => ClsLocalDrivingLicenseApplicationData.TestTrialCountAsync(this.LocalDrivingLicenseApplicationID, TestTypeID);
 
         // Whether there's an active appointment of the given test type for this application.
-        public bool HasActiveAppointment(int TestTypeID) => ClsLocalDrivingLicenseApplicationData.HasActiveAppointment(TestTypeID, this.LocalDrivingLicenseApplicationID);
+        public Task<bool> HasActiveAppointmentAsync(int TestTypeID) => ClsLocalDrivingLicenseApplicationData.HasActiveAppointmentAsync(TestTypeID, this.LocalDrivingLicenseApplicationID);
 
         // Whether the applicant attended a specific test type.
-        public bool DoesAttendTestType(int TestTypeID) => ClsLocalDrivingLicenseApplicationData.DoesAttendTestType(TestTypeID, this.LocalDrivingLicenseApplicationID);
+        public Task<bool> DoesAttendTestTypeAsync(int TestTypeID) => ClsLocalDrivingLicenseApplicationData.DoesAttendTestTypeAsync(TestTypeID, this.LocalDrivingLicenseApplicationID);
 
         // Whether the applicant has passed the specified test type.
-        public bool HasPassedTestType(int TestTypeID) => ClsTest.HasPassedTestType(TestTypeID, this.LocalDrivingLicenseApplicationID);
+        public Task<bool> HasPassedTestTypeAsync(int TestTypeID) => ClsTest.HasPassedTestTypeAsync(TestTypeID, this.LocalDrivingLicenseApplicationID);
         #endregion
 
         #region License Methods
         // Create a new ClsDriver record for the applicant (used during issuing a license).
-        private bool CreateDriver(ref ClsDriver Driver, int CreatedByUserID)
+        private async Task<ClsDriver> CreateDriverAsync(int CreatedByUserID)
         {
-            Driver = new ClsDriver();
+            ClsDriver Driver = new ClsDriver();
 
             Driver.PersonID = this.ApplicantPersonID;
             Driver.CreatedByUserID = CreatedByUserID;
             Driver.CreatedDate = DateTime.Now;
 
-            return Driver.Save();
+            return await Driver.SaveAsync() ? Driver : null;
         }
 
         // Create and save a new license (first-time issuance) for an existing driver.
-        private bool CreateLicense(int DriverID, string Notes, int CreatedByUserID)
+        private async Task<bool> CreateLicenseAsync(int DriverID, string Notes, int CreatedByUserID)
         {
             ClsLicenses NewLicense = new ClsLicenses();
 
@@ -197,37 +212,41 @@ namespace BusinessLayer
             NewLicense.DriverID = DriverID;
             NewLicense.LicenseClassID = this.LicenseClassID;
             NewLicense.IssueDate = DateTime.Now;
-            NewLicense.ExpirationDate = DateTime.Now.AddYears(this.LicenseClassInfo?.DefaultValidityLength ?? 0);
+            ClsLicenseClasses LicenseClasses = this.LicenseClassInfo ?? await ClsLicenseClasses.FindAsync(this.LicenseClassID);
+            NewLicense.ExpirationDate = DateTime.Now.AddYears(LicenseClasses?.DefaultValidityLength ?? 0);
             NewLicense.PaidFees = this.PaidFees;
             NewLicense.IsActive = true;
             NewLicense.CreatedByUserID = CreatedByUserID;
             NewLicense.Notes = Notes;
             NewLicense.IssueReason = ClsLicenses.EnIssueReason.FirstTime;
 
-            return NewLicense.Save();
+            return await NewLicense.SaveAsync();
         }
 
         // Quick check if a license already exists for the person and class.
-        public bool IsLicenseIssued() => ClsLicenses.IsLicenseExist(this.ApplicantPersonID, this.LicenseClassID);
+        public Task<bool> IsLicenseIssuedAsync() => ClsLicenses.IsLicenseExistAsync(this.ApplicantPersonID, this.LicenseClassID);
 
         // Issue a license when the applicant has passed all required tests (3 passes).
         // Creates a driver record if needed, then creates the license and completes the application inside a transaction.
-        public bool IssueLicense(string Notes, int CreatedByUserID)
+        public async Task<bool> IssueLicenseAsync(string Notes, int CreatedByUserID)
         {
-            if (!IsLicenseIssued() && GetPassedTestsCount() == 3)
+            if (!await IsLicenseIssuedAsync() && await GetPassedTestsCountAsync() == 3)
             {
-                ClsDriver Driver = ClsDriver.FindByPersonID(this.ApplicantPersonID);
+                ClsDriver Driver = await ClsDriver.FindByPersonIDAsync(this.ApplicantPersonID);
 
-                using (TransactionScope Scope = new TransactionScope())
+                using (TransactionScope Scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
                 {
                     // Create driver record if none exists.
                     if (Driver == null)
-                        if (!CreateDriver(ref Driver, CreatedByUserID)) { return false; }
+                        Driver = await CreateDriverAsync(CreatedByUserID);
+
+                    if (Driver == null)
+                        return false;
 
                     // Create the license and mark application complete.
-                    if (CreateLicense(Driver.DriverID, Notes, CreatedByUserID))
+                    if (await CreateLicenseAsync(Driver.DriverID, Notes, CreatedByUserID))
                     {
-                        if (this.SetComplete())
+                        if (await this.SetCompleteAsync())
                         { Scope.Complete(); return true; }
                     }
                     return false;

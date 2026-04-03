@@ -4,33 +4,29 @@ using DVLD.License;
 using DVLD.License.International_License;
 using DVLD.License.Local_Licenses.Controls;
 using System;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace DVLD.Applications.International_License
 {
     public partial class InternationalLicense : Form
     {
-        private int LicenseID { get; set; }
-
         private ClsLicenses CurrentLicense;
 
         private ClsInternationalLicenses NewInternationalLicense;
 
-        public InternationalLicense()
-        {
-            InitializeComponent();
-        }
+        public InternationalLicense() => InitializeComponent();
 
-        private void InternationalLicense_Load(object sender, EventArgs e)
+        private async void InternationalLicense_Load(object sender, EventArgs e)
         {
             lblApplicationDate.Text = DateTime.Now.ToString("MM/dd/yyyy");
             lblIssueDate.Text = DateTime.Now.ToString("MM/dd/yyyy");
-            lblFees.Text = ClsApplicationsTypes.Find((int)ClsApplications.EnApplicationType.NewInternationalLicense)?.Fees.ToString() ?? "Unknown";
+            lblFees.Text = (await ClsApplicationsTypes.FindAsync((int)ClsApplications.EnApplicationType.NewInternationalLicense))?.Fees.ToString() ?? "Unknown";
             lblExpirationDate.Text = DateTime.Now.AddYears(1).ToString("MM/dd/yyyy");
             lblCreatedByUser.Text = ClsGlobal.CurrentUser.UserName ?? "Unknown";
         }
 
-        private void LoadAplicationsData()
+        private async Task LoadAplicationsData()
         {
             NewInternationalLicense = new ClsInternationalLicenses();
             NewInternationalLicense.ExpirationDate = DateTime.Now.AddYears(1);
@@ -43,16 +39,15 @@ namespace DVLD.Applications.International_License
             NewInternationalLicense.IssueDate = DateTime.Now;
             NewInternationalLicense.LastStatusDate = DateTime.Now;
             NewInternationalLicense.IssuedUsingLocalLicenseID = CurrentLicense.LicenseID;
-            NewInternationalLicense.PaidFees = ClsApplicationsTypes.Find((int)ClsApplications.EnApplicationType.NewInternationalLicense)?.Fees ?? -1;
+            NewInternationalLicense.PaidFees = (await ClsApplicationsTypes.FindAsync((int)ClsApplications.EnApplicationType.NewInternationalLicense))?.Fees ?? -1;
         }
 
-        private void btnIssueLicense_Click(object sender, EventArgs e)
+        private async void btnIssueLicense_Click(object sender, EventArgs e)
         {
             if (NewInternationalLicense == null)
             {
-                LoadAplicationsData();
-
-                if (NewInternationalLicense.Save())
+                await LoadAplicationsData();
+                if (await NewInternationalLicense.SaveAsync())
                 {
                     lblLocalLicenseID.Text = CurrentLicense?.LicenseID.ToString();
                     lblInternationalLicenseID.Text = NewInternationalLicense?.InternationalLicenseID.ToString();
@@ -93,11 +88,11 @@ namespace DVLD.Applications.International_License
             }
         }
 
-        private void ctrlDriverLicenseInfoWithFilter1_LicenseSearchCompleted(object sender, ctrlDriverLicenseInfoWithFilter.FilterResult e)
+        private async void ctrlDriverLicenseInfoWithFilter1_LicenseSearchCompleted(object sender, ctrlDriverLicenseInfoWithFilter.FilterResult e)
         {
             if (e.IsFound)
             {
-                CurrentLicense = ClsLicenses.Find(e.LicenseID);
+                CurrentLicense = await ClsLicenses.FindAsync(e.LicenseID);
 
                 if (CurrentLicense != null)
                 {
@@ -105,7 +100,7 @@ namespace DVLD.Applications.International_License
                     {
                         llShowLicenseHistory.Enabled = true;
 
-                        NewInternationalLicense = ClsInternationalLicenses.GetActiveInternationalLicenseByDriverID(CurrentLicense.DriverID);
+                        NewInternationalLicense = await ClsInternationalLicenses.GetActiveInternationalLicenseByDriverIDAsync(CurrentLicense.DriverID);
                         if (NewInternationalLicense != null)
                         {
                             lblLocalLicenseID.Text = CurrentLicense?.LicenseID.ToString();

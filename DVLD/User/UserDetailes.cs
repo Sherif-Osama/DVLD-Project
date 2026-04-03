@@ -14,12 +14,10 @@ namespace DVLD.User
         }
 
         // Event handler triggered when the embedded control (ctrlLogInInformationcs1) is loaded
-        private void ctrlLogInInformationcs1_Load(object sender, EventArgs e)
+        private async void ctrlLogInInformationcs1_Load(object sender, EventArgs e)
         {
             if (UserID != 0)
-            {
-                ctrlLogInInformationcs1.LoadUserInfo(UserID);
-            }
+            { await ctrlLogInInformationcs1.LoadUserInfo(UserID); }
         }
     }
 }

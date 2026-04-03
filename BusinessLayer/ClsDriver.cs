@@ -2,6 +2,7 @@
 using DTO;
 using System;
 using System.Data;
+using System.Threading.Tasks;
 
 namespace BusinessLayer
 {
@@ -16,6 +17,7 @@ namespace BusinessLayer
         public ClsPerson PersonInfo { get; private set; }
         public int CreatedByUserID { get; set; }
         public DateTime CreatedDate { get; set; }
+
         public ClsDriver()
         {
             DriverID = -1;
@@ -30,35 +32,9 @@ namespace BusinessLayer
         {
             DriverID = driverDTO.DriverID;
             PersonID = driverDTO.PersonID;
-            PersonInfo = ClsPerson.Find(PersonID);
             CreatedByUserID = driverDTO.CreatedByUserID;
             CreatedDate = driverDTO.CreatedDate;
             Mode = EnMode.Update;
-        }
-
-        // Retrieve a DataTable with all drivers.
-        public static DataTable GetAllDrivers() => ClsDriverData.GetAllDrivers();
-
-        // Convenience helpers to get licenses for a driver.
-        public static DataTable GetAllLocalLicenses(int DriverID) => ClsLicenses.GetDriverLicenses(DriverID);
-        public static DataTable GetAllInternationalLicenses(int DriverID) => ClsInternationalLicenses.GetDriverLicenses(DriverID);
-
-        // Find driver by the associated person ID. Returns null when not found.
-        public static ClsDriver FindByPersonID(int PersonID)
-        {
-            DriverDTO DriverDTO = ClsDriverData.FindByPersonID(PersonID);
-            if (DriverDTO == null) { return null; }
-            return new ClsDriver(DriverDTO);
-        }
-
-        // Find driver by driver ID. Returns null when not found.
-        public static ClsDriver Find(int DriverID)
-        {
-            DriverDTO DriverDTO = ClsDriverData.Find(DriverID);
-
-            if (DriverDTO == null) { return null; }
-
-            return new ClsDriver(DriverDTO);
         }
 
         // Map this business object to a DTO used by the data layer.
@@ -73,19 +49,62 @@ namespace BusinessLayer
             };
         }
 
-        // Insert a new driver record via the data layer. Sets DriverID on success.
-        private bool AddNew()
+        // Retrieve a DataTable with all drivers.
+        public static Task<DataTable> GetAllDriversAsync() => ClsDriverData.GetAllDriversAsync();
+
+        // Convenience helpers to get licenses for a driver.
+        public static Task<DataTable> GetAllLocalLicensesAsync(int DriverID) => ClsLicenses.GetDriverLicensesAsync(DriverID);
+
+        public static Task<DataTable> GetAllInternationalLicensesAsync(int DriverID) => ClsInternationalLicenses.GetDriverLicensesAsync(DriverID);
+
+        #region Find Methods
+
+        private async Task LoadRelatedDataAsync()
         {
-            this.DriverID = ClsDriverData.AddNew(MappingToDTO());
+            this.PersonInfo = await ClsPerson.FindAsync(this.PersonID);
+        }
+
+        // Find driver by the associated person ID. Returns null when not found.
+        public static async Task<ClsDriver> FindByPersonIDAsync(int PersonID)
+        {
+            DriverDTO DriverDTO = await ClsDriverData.FindByPersonIDAsync(PersonID);
+            if (DriverDTO == null) { return null; }
+
+            ClsDriver DriverObj = new ClsDriver(DriverDTO);
+
+            await DriverObj.LoadRelatedDataAsync();
+
+            return DriverObj;
+        }
+
+        // Find driver by driver ID. Returns null when not found.
+        public static async Task<ClsDriver> FindAsync(int DriverID)
+        {
+            DriverDTO DriverDTO = await ClsDriverData.FindAsync(DriverID);
+
+            if (DriverDTO == null) { return null; }
+
+            ClsDriver DriverObj = new ClsDriver(DriverDTO);
+
+            await DriverObj.LoadRelatedDataAsync();
+
+            return DriverObj;
+        }
+        #endregion
+
+        // Insert a new driver record via the data layer. Sets DriverID on success.
+        private async Task<bool> AddNewAsync()
+        {
+            this.DriverID = await ClsDriverData.AddNewAsync(MappingToDTO());
             return this.DriverID != -1;
         }
 
         // Update an existing driver record via the data layer.
-        private bool Update() => ClsDriverData.Update(MappingToDTO());
+        private Task<bool> UpdateAsync() => ClsDriverData.UpdateAsync(MappingToDTO());
 
-        private bool BusinessRules()
+        private async Task<bool> BusinessRulesAsync()
         {
-            ClsDriver ExistingDriver = ClsDriver.FindByPersonID(this.PersonID);
+            ClsDriver ExistingDriver = await ClsDriver.FindByPersonIDAsync(this.PersonID);
             if (Mode == EnMode.AddNew)
             {
                 return (ExistingDriver == null);
@@ -98,17 +117,17 @@ namespace BusinessLayer
             return false;
         }
 
-        public bool Save()
+        public async Task<bool> SaveAsync()
         {
-            if (BusinessRules())
+            if (await BusinessRulesAsync())
             {
                 switch (this.Mode)
                 {
                     case EnMode.AddNew:
-                        if (AddNew()) { this.Mode = EnMode.Update; return true; }
+                        if (await AddNewAsync()) { this.Mode = EnMode.Update; return true; }
                         return false;
                     case EnMode.Update:
-                        return Update();
+                        return await UpdateAsync();
                 }
             }
             return false;

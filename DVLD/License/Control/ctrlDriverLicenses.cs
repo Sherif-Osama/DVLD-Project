@@ -1,5 +1,6 @@
 ﻿using BusinessLayer;
 using DVLD.License.International_License;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace DVLD.License
@@ -13,9 +14,9 @@ namespace DVLD.License
             InitializeComponent();
         }
 
-        private void LoadLocalLicenseInfo()
+        private async Task LoadLocalLicenseInfoAsync()
         {
-            dgvLocalLicensesHistory.DataSource = ClsDriver.GetAllLocalLicenses(Driver.DriverID);
+            dgvLocalLicensesHistory.DataSource = await ClsDriver.GetAllLocalLicensesAsync(Driver.DriverID);
             int RowCount = dgvLocalLicensesHistory.Rows.Count;
             lblLocalLicensesRecords.Text = RowCount.ToString();
 
@@ -41,9 +42,9 @@ namespace DVLD.License
             }
         }
 
-        private void LoadInternationalLicenseInfo()
+        private async Task LoadInternationalLicenseInfoAsync()
         {
-            dgvInternationalLicensesHistory.DataSource = ClsDriver.GetAllInternationalLicenses(Driver.DriverID);
+            dgvInternationalLicensesHistory.DataSource = await ClsDriver.GetAllInternationalLicensesAsync(Driver.DriverID);
             int RowCount = dgvInternationalLicensesHistory.Rows.Count;
             lblInternationalLicensesRecords.Text = RowCount.ToString();
 
@@ -69,14 +70,14 @@ namespace DVLD.License
             }
         }
 
-        public void LoadAllDriverLicenses(int DriverID)
+        public async Task LoadAllDriverLicensesAsync(int DriverID)
         {
-            Driver = ClsDriver.Find(DriverID);
+            Driver = await ClsDriver.FindAsync(DriverID);
 
             if (Driver != null)
             {
-                LoadLocalLicenseInfo();
-                LoadInternationalLicenseInfo();
+                await LoadLocalLicenseInfoAsync();
+                await LoadInternationalLicenseInfoAsync();
             }
             else
             {

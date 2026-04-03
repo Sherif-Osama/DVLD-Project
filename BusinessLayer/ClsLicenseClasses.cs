@@ -1,6 +1,7 @@
 ﻿using DataAccessLayer;
 using DTO;
 using System.Data;
+using System.Threading.Tasks;
 
 namespace BusinessLayer
 {
@@ -38,21 +39,21 @@ namespace BusinessLayer
         }
         #endregion
 
-        public static DataTable GetAllLicenseClassName() => ClsLicenseClassesData.GetAllLicenseClassName();
+        public static Task<DataTable> GetAllLicenseClassesAsync() => ClsLicenseClassesData.GetAllLicenseClassesAsync();
 
         #region Find Methods
-        public static ClsLicenseClasses Find(int LicenseClassID)
+        public static async Task<ClsLicenseClasses> FindAsync(int LicenseClassID)
         {
-            LicenseClassesDTO License = ClsLicenseClassesData.Find(LicenseClassID);
+            LicenseClassesDTO License = await ClsLicenseClassesData.FindAsync(LicenseClassID);
 
             if (License == null) return null;
 
             return new ClsLicenseClasses(License);
         }
 
-        public static ClsLicenseClasses Find(string LicenseClassesName)
+        public static async Task<ClsLicenseClasses> FindAsync(string LicenseClassesName)
         {
-            LicenseClassesDTO License = ClsLicenseClassesData.Find(LicenseClassesName);
+            LicenseClassesDTO License = await ClsLicenseClassesData.FindAsync(LicenseClassesName);
 
             if (License == null) return null;
 

@@ -2,28 +2,26 @@
 using DVLD.Global_classes;
 using DVLD.People;
 using System;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace DVLD
 {
     public partial class ManagePeopleForm : Form
     {
-        public ManagePeopleForm()
-        {
-            InitializeComponent();
-        }
+        public ManagePeopleForm() => InitializeComponent();
 
         // Load event: initializes data grid and filter controls
-        private void ManagePeopleForm_Load_1(object sender, EventArgs e)
+        private async void ManagePeopleForm_Load_1(object sender, EventArgs e)
         {
-            RefreshDataGridView();
+            await RefreshDataGridView();
             LoadFilterData();
         }
 
         // Load all people data and update DataGridView headers and record count
-        private void RefreshDataGridView()
+        private async Task RefreshDataGridView()
         {
-            dgvPeople.DataSource = ClsPerson.GetAllPeople();
+            dgvPeople.DataSource = await ClsPerson.GetAllPeopleAsync();
             int NumberOfRecords = dgvPeople.Rows.Count;
             RecordsNumber.Text = NumberOfRecords.ToString();
 
@@ -50,31 +48,31 @@ namespace DVLD
         private void AddNewPerson_Click(object sender, EventArgs e)
         {
             AddAndEditPerson Form = new AddAndEditPerson();
-            Form.RefreshFormDataEvent += RefreshDataGridView;
+            Form.RefreshFormDataEvent += async () => await RefreshDataGridView();
             Form.ShowDialog();
         }
 
         // Open Add/Edit Person form in "Edit" mode for selected person
         private void editToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            if (int.TryParse(dgvPeople.CurrentRow.Cells[0].Value.ToString(), out int ID))
+            if (int.TryParse(dgvPeople?.CurrentRow?.Cells[0]?.Value?.ToString(), out int ID))
             {
                 AddAndEditPerson Form = new AddAndEditPerson(ID);
-                Form.RefreshFormDataEvent += RefreshDataGridView;
+                Form.RefreshFormDataEvent += async () => await RefreshDataGridView();
                 Form.ShowDialog();
             }
         }
 
         // Delete selected person with confirmation and refresh grid
-        private void deleteToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void deleteToolStripMenuItem_Click(object sender, EventArgs e)
         {
             string PersonIDMessage = dgvPeople.CurrentRow.Cells[0].Value.ToString();
             if (MessageBox.Show($"Do you want delete Person with ID {PersonIDMessage}", "confirmation", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
             {
-                if (ClsPerson.Delete((int)dgvPeople.CurrentRow.Cells[0].Value))
+                if (await ClsPerson.DeleteAsync((int)dgvPeople?.CurrentRow?.Cells[0]?.Value))
                 {
                     MessageBox.Show("Deleted successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    RefreshDataGridView();
+                    await RefreshDataGridView();
                 }
                 else
                 {
@@ -85,13 +83,13 @@ namespace DVLD
         }
 
         // Show details of the selected person
-        private void showToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void showToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            if (int.TryParse(dgvPeople.CurrentRow.Cells[0].Value.ToString(), out int ID))
+            if (int.TryParse(dgvPeople?.CurrentRow?.Cells[0]?.Value?.ToString(), out int ID))
             {
                 PersonDetails PersonDetaInFo = new PersonDetails(ID);
                 PersonDetaInFo.ShowDialog();
-                RefreshDataGridView();
+                await RefreshDataGridView();
             }
         }
 

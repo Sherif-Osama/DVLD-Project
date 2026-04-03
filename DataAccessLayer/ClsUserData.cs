@@ -3,19 +3,20 @@ using DTO;
 using System;
 using System.Data;
 using System.Data.SqlClient;
+using System.Threading.Tasks;
 
 namespace DataAccessLayer
 {
     public static class ClsUserData
     {
         // Reads a single user record from the database and fills the User DTO
-        private static UserDTO ReadUser(SqlCommand command)
+        private static async Task<UserDTO> ReadUserAsync(SqlCommand command)
         {
-            using (SqlDataReader Reader = command.ExecuteReader())
+            try
             {
-                try
+                using (SqlDataReader Reader = await command.ExecuteReaderAsync())
                 {
-                    if (Reader.Read()) // Move to the first record
+                    if (await Reader.ReadAsync()) // Move to the first record
                     {
                         return new UserDTO()
                         {
@@ -26,10 +27,11 @@ namespace DataAccessLayer
                             IsActive = Reader["IsActive"] != DBNull.Value ? Convert.ToBoolean(Reader["IsActive"]) : false,
                         };
                     }
+
+                    return null;
                 }
-                catch (Exception Ex) { ClsLogger.Log(Ex); return null; }
-                return null;
             }
+            catch (Exception Ex) { ClsLogger.Log(Ex); return null; }
         }
 
         // Sets SQL parameters for the command based on the User DTO
@@ -52,7 +54,7 @@ namespace DataAccessLayer
         }
 
         // Retrieves all users joined with their full names from People table
-        public static DataTable GetAllUsersData()
+        public static async Task<DataTable> GetAllUsersDataAsync()
         {
             string Query = @"SELECT 
                             Users.UserID, 
@@ -66,10 +68,10 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
-                        return UtilitiesClass.ExecuteDataTable(Comd);
+                        return await UtilitiesClass.ExecuteDataTableAsync(Comd);
                     }
                 }
             }
@@ -77,7 +79,7 @@ namespace DataAccessLayer
         }
 
         // Checks if a user exists by username only
-        public static bool UserExists(string UserName)
+        public static async Task<bool> UserExistsAsync(string UserName)
         {
             string Query = "SELECT COUNT(*) FROM Users WHERE UserName = @UserName";
 
@@ -85,12 +87,12 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@UserName", SqlDbType.NVarChar).Value = UserName;
 
-                        return UtilitiesClass.ExecuteScalar(Comd) != -1 ? true : false;
+                        return await UtilitiesClass.ExecuteScalarAsync(Comd) != -1 ? true : false;
                     }
                 }
             }
@@ -98,7 +100,7 @@ namespace DataAccessLayer
         }
 
         // Checks if a given person is already a user
-        public static bool IsUser(int PersonID)
+        public static async Task<bool> IsUserAsync(int PersonID)
         {
             string Query = "SELECT COUNT(*) FROM Users WHERE PersonID = @PersonID;";
 
@@ -106,13 +108,13 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         // Use parameters to avoid SQL injection
                         Comd.Parameters.Add("@PersonID", SqlDbType.Int).Value = PersonID;
 
-                        return UtilitiesClass.ExecuteScalar(Comd) != -1 ? true : false;
+                        return await UtilitiesClass.ExecuteScalarAsync(Comd) != -1 ? true : false;
                     }
                 }
             }
@@ -120,7 +122,7 @@ namespace DataAccessLayer
         }
 
         // Finds a user by PersonID
-        public static UserDTO FindUserByPersonID(int PersonID)
+        public static async Task<UserDTO> FindUserByPersonIDAsync(int PersonID)
         {
             UserDTO User = new UserDTO();
             string Query = @"SELECT 
@@ -135,12 +137,12 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@PersonID", SqlDbType.Int).Value = PersonID;
 
-                        return ReadUser(Comd);
+                        return await ReadUserAsync(Comd);
                     }
                 }
             }
@@ -148,7 +150,7 @@ namespace DataAccessLayer
         }
 
         // Finds a user by User ID
-        public static UserDTO Find(int UserID)
+        public static async Task<UserDTO> FindAsync(int UserID)
         {
             UserDTO User = new UserDTO();
             string Query = @"SELECT 
@@ -163,12 +165,12 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@UserID", SqlDbType.Int).Value = UserID;
 
-                        return ReadUser(Comd);
+                        return await ReadUserAsync(Comd);
                     }
                 }
             }
@@ -176,7 +178,7 @@ namespace DataAccessLayer
         }
 
         // Finds a user by UserName
-        public static UserDTO Find(string UserName)
+        public static async Task<UserDTO> FindAsync(string UserName)
         {
             UserDTO User = new UserDTO();
             string Query = @"SELECT 
@@ -191,12 +193,12 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@UserName", SqlDbType.NVarChar).Value = UserName;
 
-                        return ReadUser(Comd);
+                        return await ReadUserAsync(Comd);
                     }
                 }
             }
@@ -205,7 +207,7 @@ namespace DataAccessLayer
         }
 
         // Finds a user by both UserName and Password
-        public static UserDTO Find(string UserName, string Password)
+        public static async Task<UserDTO> FindAsync(string UserName, string Password)
         {
             string Query = @"SELECT * from Users where UserName = @UserName and Password = @Password";
 
@@ -213,13 +215,13 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@UserName", SqlDbType.NVarChar).Value = UserName;
                         Comd.Parameters.Add("@Password", SqlDbType.NVarChar).Value = Password;
 
-                        return ReadUser(Comd);
+                        return await ReadUserAsync(Comd);
                     }
                 }
             }
@@ -227,7 +229,7 @@ namespace DataAccessLayer
         }
 
         // Adds a new user and returns its generated UserID
-        public static int AddNewUser(UserDTO User)
+        public static async Task<int> AddNewUserAsync(UserDTO User)
         {
             string Query = @"INSERT INTO Users (PersonID,UserName,Password,IsActive)
                             VALUES
@@ -238,12 +240,12 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         SetParameters(Comd, User);
 
-                        return UtilitiesClass.ExecuteScalar(Comd);
+                        return await UtilitiesClass.ExecuteScalarAsync(Comd);
                     }
                 }
             }
@@ -251,7 +253,7 @@ namespace DataAccessLayer
         }
 
         // Updates an existing user record
-        public static bool UpdateUser(UserDTO User)
+        public static async Task<bool> UpdateUserAsync(UserDTO User)
         {
             string Query = @"UPDATE Users
                                 SET 
@@ -264,11 +266,11 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         SetParameters(Comd, User);
-                        return (UtilitiesClass.ExecuteNonQuery(Comd) > 0);
+                        return (await UtilitiesClass.ExecuteNonQueryAsync(Comd) > 0);
                     }
                 }
             }
@@ -276,7 +278,7 @@ namespace DataAccessLayer
         }
 
         // Deletes a user by UserID
-        public static bool DeleteUser(int UserID)
+        public static async Task<bool> DeleteUserAsync(int UserID)
         {
             string Query = @"DELETE FROM Users WHERE UserID = @UserID";
 
@@ -284,19 +286,19 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@UserID", SqlDbType.Int).Value = UserID;
 
-                        return (UtilitiesClass.ExecuteNonQuery(Comd) > 0);
+                        return (await UtilitiesClass.ExecuteNonQueryAsync(Comd) > 0);
                     }
                 }
             }
             catch (Exception Ex) { ClsLogger.Log(Ex); return false; }
         }
 
-        public static bool ChangePassword(int UserID, string NewPassWord)
+        public static async Task<bool> ChangePasswordAsync(int UserID, string NewPassWord)
         {
             string Query = @"update Users 
                             SET 
@@ -306,13 +308,13 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
 
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@NewPassWord", SqlDbType.NVarChar).Value = NewPassWord;
                         Comd.Parameters.Add("@UserID", SqlDbType.Int).Value = UserID;
-                        return (UtilitiesClass.ExecuteNonQuery(Comd) > 0);
+                        return (await UtilitiesClass.ExecuteNonQueryAsync(Comd) > 0);
                     }
                 }
             }

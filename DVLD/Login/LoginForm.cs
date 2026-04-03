@@ -8,21 +8,18 @@ namespace DVLD.Login
     // Simple login form: validates input, authenticates user and opens the main form.
     public partial class LoginForm : Form
     {
-        public LoginForm()
-        {
-            InitializeComponent();
-        }
+        public LoginForm() => InitializeComponent();
 
         private void CheckRememberMe() => ClsGlobal.RememberUsernameAndPassword(chkRememberMe.Checked, txtPassword.Text.Trim());
 
         // Handle the login button click
-        private void ButLogIn_Click(object sender, EventArgs e)
+        private async void ButLogIn_Click(object sender, EventArgs e)
         {
             // Ensure both username and password fields are not empty
             if (ClsValidation.ValidateEmptyTextBoxes(errorProvider1, splitContainerLogin.Panel2))
             {
                 // Try to find the user by username and password (business layer)
-                ClsGlobal.CurrentUser = ClsUser.Find(txtUserName.Text.Trim(), txtPassword.Text.Trim());
+                ClsGlobal.CurrentUser = await ClsUser.FindAsync(txtUserName.Text.Trim(), txtPassword.Text.Trim());
 
                 // If found and active, open MainForm and hide this login form
                 if (ClsGlobal.CurrentUser != null && ClsGlobal.CurrentUser.IsActive)

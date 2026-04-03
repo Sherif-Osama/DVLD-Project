@@ -1,4 +1,5 @@
 ﻿using BusinessLayer;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace DVLD.License.International_License
@@ -10,12 +11,12 @@ namespace DVLD.License.International_License
             InitializeComponent();
         }
 
-        public void LoadInternationalLicenseInfo(int LicenseID)
+        public async Task LoadInternationalLicenseInfoAsync(int LicenseID)
         {
-            ClsInternationalLicenses InternationalLicense = ClsInternationalLicenses.Find(LicenseID);
+            ClsInternationalLicenses InternationalLicense = await ClsInternationalLicenses.FindAsync(LicenseID);
             if (InternationalLicense != null)
             {
-                ClsPerson personInfo = ClsPerson.Find(InternationalLicense.ApplicantPersonID);
+                ClsPerson personInfo = await ClsPerson.FindAsync(InternationalLicense.ApplicantPersonID);
                 if (personInfo != null)
                 {
                     lblFullName.Text = personInfo.FullName;

@@ -3,18 +3,19 @@ using DTO;
 using System;
 using System.Data;
 using System.Data.SqlClient;
+using System.Threading.Tasks;
 
 namespace DataAccessLayer
 {
     public static class ClsCountryData
     {
-        private static CountryDTO ReadData(SqlCommand Comd)
+        private static async Task<CountryDTO> ReadDataAsync(SqlCommand Comd)
         {
             try
             {
-                using (SqlDataReader Reader = Comd.ExecuteReader())
+                using (SqlDataReader Reader = await Comd.ExecuteReaderAsync())
                 {
-                    if (Reader.Read())
+                    if (await Reader.ReadAsync())
                     {
                         return new CountryDTO
                         {
@@ -29,24 +30,24 @@ namespace DataAccessLayer
         }
 
         // Retrieves all countries
-        static public DataTable GetAllCountries()
+        static public async Task<DataTable> GetAllCountriesAsync()
         {
             string Query = "SELECT * FROM Countries order by CountryName;";
             try
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
-                        return UtilitiesClass.ExecuteDataTable(Comd);
+                        return await UtilitiesClass.ExecuteDataTableAsync(Comd);
                     }
                 }
             }
             catch (Exception Ex) { ClsLogger.Log(Ex); return null; }
         }
 
-        public static CountryDTO Find(int CountryID)
+        public static async Task<CountryDTO> FindAsync(int CountryID)
         {
             string Query = "SELECT * FROM Countries WHERE CountryID = @CountryID";
 
@@ -54,19 +55,19 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@CountryID", SqlDbType.Int).Value = CountryID;
 
-                        return ReadData(Comd);
+                        return await ReadDataAsync(Comd);
                     }
                 }
             }
             catch (Exception Ex) { ClsLogger.Log(Ex); return null; }
         }
 
-        public static CountryDTO Find(string CountryName)
+        public static async Task<CountryDTO> FindAsync(string CountryName)
         {
             string Query = "SELECT * FROM Countries WHERE CountryName = @CountryName";
 
@@ -74,12 +75,12 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@CountryName", SqlDbType.NVarChar).Value = CountryName;
 
-                        return ReadData(Comd);
+                        return await ReadDataAsync(Comd);
                     }
                 }
             }

@@ -7,6 +7,7 @@ using System.ComponentModel;
 using System.Data;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace DVLD
@@ -39,10 +40,10 @@ namespace DVLD
         }
 
         // Load all countries into ComboBox
-        private void InitializeCountries()
+        private async Task InitializeCountries()
         {
             CbCountries.Items.Clear();
-            DataTable Countries = ClsCountry.GetAllCountries();
+            DataTable Countries = await ClsCountry.GetAllCountriesAsync();
             if (Countries?.Rows.Count > 0)
                 CbCountries.Items.AddRange(Countries.AsEnumerable().Select(r => r["CountryName"].ToString()).ToArray());
         }
@@ -57,9 +58,9 @@ namespace DVLD
 
         #region Load UI Data
         // Load form data on load event
-        private void AddAndEditPerson_Load(object sender, EventArgs e)
+        private async void AddAndEditPerson_Load(object sender, EventArgs e)
         {
-            InitializeCountries();
+            await InitializeCountries();
             InitializeDate();
             if (Mode == EnMode.AddNew)
             {
@@ -70,14 +71,14 @@ namespace DVLD
             }
             else
             {
-                SetDataInForm();
+                await SetDataInForm();
             }
         }
 
         // Fill form fields with existing person data
-        private void SetDataInForm()
+        private async Task SetDataInForm()
         {
-            Person = ClsPerson.Find(PersonID);
+            Person = await ClsPerson.FindAsync(PersonID);
             Showlabel1.Text = "Update Person";
             if (Person != null)
             {
@@ -119,7 +120,7 @@ namespace DVLD
         private void radioButtonFemale_CheckedChanged(object sender, EventArgs e) => PicPerson.Image = Resources.Female_512;
 
 
-        private bool HandlePersonPicture()
+        private async Task<bool> HandlePersonPicture()
         {
             if (Person.ImagePath != PicPerson.ImageLocation)
             {
@@ -150,13 +151,13 @@ namespace DVLD
         }
 
         // Save person data
-        private void Save_Click(object sender, EventArgs e)
+        private async void Save_Click(object sender, EventArgs e)
         {
             txtEmail.Tag = "Optional";
             if (ClsValidation.ValidateEmptyTextBoxes(errorProvider1, panel1) && this.ValidateChildren())
             {
 
-                if (!HandlePersonPicture())
+                if (!await HandlePersonPicture())
                     return;
 
                 Person.FirstName = txtFirst.Text.Trim();
@@ -169,10 +170,10 @@ namespace DVLD
                 Person.Address = textAddress.Text.Trim();
                 Person.Gender = radioButtonFemale.Checked ? ClsPerson.EnGender.Female : ClsPerson.EnGender.Male;
                 Person.DateOfBirth = dateTimePicker1.Value;
-                int NationalityCountryID = ClsCountry.Find(CbCountries.Text)?.CountryID ?? -1;
+                int NationalityCountryID = (await ClsCountry.FindAsync(CbCountries.Text))?.CountryID ?? -1;
                 Person.NationalityCountryID = NationalityCountryID;
 
-                if (Person.Save())
+                if (await Person.SaveAsync())
                 {
                     LapNA.Text = Person.PersonID.ToString();
                     MessageBox.Show("Saved successfully", "", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -202,11 +203,11 @@ namespace DVLD
         }
 
         // Validate National Number uniqueness
-        private void txtNationalNo_Validating(object sender, CancelEventArgs e)
+        private async void txtNationalNo_Validating(object sender, CancelEventArgs e)
         {
             if (Mode == EnMode.AddNew)
             {
-                if (ClsPerson.PersonExists(txtNationalNo.Text.Trim()))
+                if (await ClsPerson.PersonExistsAsync(txtNationalNo.Text.Trim()))
                 {
                     txtNationalNo.Focus();
                     errorProvider1.SetError(txtNationalNo, "This national number is used by another person!");
@@ -218,7 +219,7 @@ namespace DVLD
                 return;
             }
 
-            if (ClsPerson.PersonExists(txtNationalNo.Text.Trim()) && Person.NationalNo != txtNationalNo.Text)
+            if (await ClsPerson.PersonExistsAsync(txtNationalNo.Text.Trim()) && Person.NationalNo != txtNationalNo.Text)
             {
                 txtNationalNo.Focus();
                 errorProvider1.SetError(txtNationalNo, "This national number is used by another person!");

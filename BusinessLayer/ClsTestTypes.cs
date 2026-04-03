@@ -1,6 +1,7 @@
 ﻿using DataAccessLayer;
 using DTO;
 using System.Data;
+using System.Threading.Tasks;
 
 namespace BusinessLayer
 {
@@ -22,14 +23,14 @@ namespace BusinessLayer
                     case 3:
                         return EnTestType.StreetTest;
                     default:
-                        return 0;
+                        return EnTestType.VisionTest;
                 }
             }
         }
         public string Title { set; get; }
         public string Description { set; get; }
         public float Fees { set; get; }
-        
+
         // Default constructor initializing default values
         public ClsTestTypes()
         {
@@ -61,12 +62,12 @@ namespace BusinessLayer
         }
 
         // Gets all test types from the database
-        public static DataTable GetAllTestType() => ClsTestTypesData.GetAllTestType();
+        public static Task<DataTable> GetAllTestTypeAsync() => ClsTestTypesData.GetAllTestTypeAsync();
 
         // Finds a test type by ID
-        public static ClsTestTypes Find(int TestTypeID)
+        public static async Task<ClsTestTypes> FindAsync(int TestTypeID)
         {
-            TestTypesDTO testTypesDTO = ClsTestTypesData.Find(TestTypeID);
+            TestTypesDTO testTypesDTO = await ClsTestTypesData.FindAsync(TestTypeID);
 
             if (testTypesDTO == null) return null;
 
@@ -74,9 +75,9 @@ namespace BusinessLayer
         }
 
         // Finds a test type by Title
-        public static ClsTestTypes Find(string Title)
+        public static async Task<ClsTestTypes> FindAsync(string Title)
         {
-            TestTypesDTO testTypesDTO = ClsTestTypesData.Find(Title);
+            TestTypesDTO testTypesDTO = await ClsTestTypesData.FindAsync(Title);
 
             if (testTypesDTO == null) return null;
 
@@ -84,14 +85,14 @@ namespace BusinessLayer
         }
 
         // Saves the current object (updates if exists)
-        public bool Save()
+        public async Task<bool> SaveAsync()
         {
             // Check if a test type with the same title already exists
-            ClsTestTypes testTypes = Find(this.Title);
+            ClsTestTypes testTypes = await FindAsync(this.Title);
             if (testTypes == null || this.TestTypeID == testTypes.TestTypeID)
             {
                 // Update the record in database
-                return ClsTestTypesData.Update(MappingToDTO());
+                return await ClsTestTypesData.UpdateAsync(MappingToDTO());
             }
 
             // Return false if a duplicate title exists

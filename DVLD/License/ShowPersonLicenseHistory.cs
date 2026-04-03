@@ -14,17 +14,17 @@ namespace DVLD.License
             this.PersonID = PersonID;
         }
 
-        private void ShowPersonLicenseHistory_Load_1(object sender, EventArgs e)
+        private async void ShowPersonLicenseHistory_Load_1(object sender, EventArgs e)
         {
-            ClsPerson PersonInfo = ClsPerson.Find(PersonID);
+            ClsPerson PersonInfo = await ClsPerson.FindAsync(PersonID);
             if (PersonInfo != null)
             {
-                ctrlPersonCardWithFilter1.LoadPerson(PersonInfo.PersonID);
+                await ctrlPersonCardWithFilter1.LoadPersonAsync(PersonInfo.PersonID);
 
-                ClsDriver Driver = ClsDriver.FindByPersonID(PersonID);
+                ClsDriver Driver = await ClsDriver.FindByPersonIDAsync(PersonID);
 
                 if (Driver != null)
-                { ctrlDriverLicenses1.LoadAllDriverLicenses(Driver.DriverID); }
+                { await ctrlDriverLicenses1.LoadAllDriverLicensesAsync(Driver.DriverID); }
             }
         }
 

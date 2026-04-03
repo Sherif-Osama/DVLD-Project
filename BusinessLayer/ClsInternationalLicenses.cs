@@ -2,6 +2,7 @@
 using DTO;
 using System;
 using System.Data;
+using System.Threading.Tasks;
 using System.Transactions;
 
 namespace BusinessLayer
@@ -28,7 +29,6 @@ namespace BusinessLayer
             IsActive = true;
             ApplicationType = EnApplicationType.NewInternationalLicense;
             ApplicationTypeID = (int)ApplicationType;
-            ApplicationTypeInfo = ClsApplicationsTypes.Find(ApplicationTypeID);
         }
 
         // Private constructor to initialize object from a DTO (loaded from DB)
@@ -60,22 +60,23 @@ namespace BusinessLayer
         }
 
         // Data retrieval helpers
-        public static DataTable GetAllInternationalLicenses() => ClsInternationalLicenseData.GetAllInternationalLicenses();
-        public static DataTable GetDriverLicenses(int DriverID) => ClsInternationalLicenseData.GetDriverLicenses(DriverID);
+        public static Task<DataTable> GetAllInternationalLicensesAsync() => ClsInternationalLicenseData.GetAllInternationalLicensesAsync();
+        public static Task<DataTable> GetDriverLicensesAsync(int DriverID) => ClsInternationalLicenseData.GetDriverLicensesAsync(DriverID);
 
         #region Find Methods
         // Find by international license ID
-        public new static ClsInternationalLicenses Find(int InternationalLicenseID)
+        public new static async Task<ClsInternationalLicenses> FindAsync(int InternationalLicenseID)
         {
-            InternationalLicenseDTO InternationalLicenseDTO = ClsInternationalLicenseData.Find(InternationalLicenseID);
+            InternationalLicenseDTO InternationalLicenseDTO = await ClsInternationalLicenseData.FindAsync(InternationalLicenseID);
             if (InternationalLicenseDTO == null) { return null; }
+
             return new ClsInternationalLicenses(InternationalLicenseDTO);
         }
 
         // Find by driver ID (returns the international license for a driver)
-        public static ClsInternationalLicenses FindByDriverID(int DriverID)
+        public static async Task<ClsInternationalLicenses> FindByDriverIDAsync(int DriverID)
         {
-            InternationalLicenseDTO InternationalLicenseDTO = ClsInternationalLicenseData.FindByDriverID(DriverID);
+            InternationalLicenseDTO InternationalLicenseDTO = await ClsInternationalLicenseData.FindByDriverIDAsync(DriverID);
 
             if (InternationalLicenseDTO == null) { return null; }
 
@@ -83,9 +84,9 @@ namespace BusinessLayer
         }
 
         // Get the active international license for a specific driver
-        public static ClsInternationalLicenses GetActiveInternationalLicenseByDriverID(int DriverID)
+        public static async Task<ClsInternationalLicenses> GetActiveInternationalLicenseByDriverIDAsync(int DriverID)
         {
-            InternationalLicenseDTO InternationalLicenseDTO = ClsInternationalLicenseData.GetActiveInternationalLicenseByDriverID(DriverID);
+            InternationalLicenseDTO InternationalLicenseDTO = await ClsInternationalLicenseData.GetActiveInternationalLicenseByDriverIDAsync(DriverID);
 
             if (InternationalLicenseDTO == null) { return null; }
 
@@ -94,22 +95,21 @@ namespace BusinessLayer
         #endregion
 
         // Insert a new international license record via data layer
-        private bool AddNew()
+        private async Task<bool> AddNewAsync()
         {
-            this.InternationalLicenseID = ClsInternationalLicenseData.AddNew(MappingToDTO());
+            this.InternationalLicenseID = await ClsInternationalLicenseData.AddNewAsync(MappingToDTO());
             return (this.InternationalLicenseID != -1);
         }
 
         // Update an existing international license record via data layer
-        private bool Update() => ClsInternationalLicenseData.Update(MappingToDTO());
+        private Task<bool> UpdateAsync() => ClsInternationalLicenseData.UpdateAsync(MappingToDTO());
 
-        private bool BusinessRules()
+        private async Task<bool> BusinessRulesAsync()
         {
-            ClsInternationalLicenses License = FindByDriverID(this.DriverID);
-
+            ClsInternationalLicenses License = await FindByDriverIDAsync(this.DriverID);
             if (Mode == EnMode.AddNew)
             {
-                ClsLicenses LocalLicenses = ClsLicenses.Find(this.IssuedUsingLocalLicenseID);
+                ClsLicenses LocalLicenses = await ClsLicenses.FindAsync(this.IssuedUsingLocalLicenseID);
                 if (LocalLicenses != null)
                 {
                     bool IsExpired = LocalLicenses.ExpirationDate < DateTime.Now;
@@ -123,24 +123,24 @@ namespace BusinessLayer
             return false;
         }
 
-        public override bool Save()
+        public override async Task<bool> SaveAsync()
         {
-            if (BusinessRules())
+            if (await BusinessRulesAsync())
             {
                 bool IsNew = (this.Mode == EnMode.AddNew);
 
-                using (TransactionScope Scope = new TransactionScope())
+                using (TransactionScope Scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
                 {
                     // Persist shared application fields first (base class)
-                    if (!base.Save())
+                    if (!await base.SaveAsync())
                         return false;
 
                     // Persist international-license-specific data
                     if (IsNew)
                     {
-                        if (AddNew())
+                        if (await AddNewAsync())
                         {
-                            if (this.SetComplete())
+                            if (await this.SetCompleteAsync())
                             { this.Mode = EnMode.Update; Scope.Complete(); return true; }
                             return false;
                         }
@@ -148,7 +148,7 @@ namespace BusinessLayer
                     }
                     else
                     {
-                        if (Update()) { Scope.Complete(); return true; }
+                        if (await UpdateAsync()) { Scope.Complete(); return true; }
                         return false;
                     }
                 }

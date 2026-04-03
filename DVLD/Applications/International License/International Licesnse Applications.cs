@@ -3,6 +3,7 @@ using DVLD.Global_classes;
 using DVLD.License;
 using DVLD.License.International_License;
 using DVLD.People;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace DVLD.Applications.International_License
@@ -14,9 +15,9 @@ namespace DVLD.Applications.International_License
             InitializeComponent();
         }
 
-        private void RefreshDataGridView()
+        private async Task RefreshDataGridViewAsync()
         {
-            dgvInternationalLicenses.DataSource = ClsInternationalLicenses.GetAllInternationalLicenses();
+            dgvInternationalLicenses.DataSource = await ClsInternationalLicenses.GetAllInternationalLicensesAsync();
 
             int totalRecords = dgvInternationalLicenses.Rows.Count;
 
@@ -57,9 +58,9 @@ namespace DVLD.Applications.International_License
             }
         }
 
-        private void ListInternationalLicesnseApplications_Load(object sender, System.EventArgs e)
+        private async void ListInternationalLicesnseApplications_Load(object sender, System.EventArgs e)
         {
-            RefreshDataGridView();
+            await RefreshDataGridViewAsync();
             LoadFilterData();
         }
 
@@ -70,11 +71,11 @@ namespace DVLD.Applications.International_License
             lblInternationalLicensesRecords.Text = e.FoundRows.ToString();
         }
 
-        private void PersonDetailsToolStripMenuItem_Click(object sender, System.EventArgs e)
+        private async void PersonDetailsToolStripMenuItem_Click(object sender, System.EventArgs e)
         {
             if (int.TryParse(dgvInternationalLicenses.CurrentRow.Cells[2].Value.ToString(), out int DriverID))
             {
-                ClsDriver Driver = ClsDriver.Find(DriverID);
+                ClsDriver Driver = await ClsDriver.FindAsync(DriverID);
                 if (Driver != null)
                 {
                     PersonDetails Person = new PersonDetails(Driver.PersonID);
@@ -91,11 +92,11 @@ namespace DVLD.Applications.International_License
             }
         }
 
-        private void showDetailsToolStripMenuItem_Click(object sender, System.EventArgs e)
+        private async void showDetailsToolStripMenuItem_Click(object sender, System.EventArgs e)
         {
             if (int.TryParse(dgvInternationalLicenses.CurrentRow.Cells[0].Value.ToString(), out int LicenseID))
             {
-                ClsInternationalLicenses License = ClsInternationalLicenses.Find(LicenseID);
+                ClsInternationalLicenses License = await ClsInternationalLicenses.FindAsync(LicenseID);
                 if (License != null)
                 {
                     ShowInternationalLicenseInfo InternationalLicenseInfo = new ShowInternationalLicenseInfo(License.InternationalLicenseID);
@@ -112,11 +113,11 @@ namespace DVLD.Applications.International_License
             }
         }
 
-        private void showPersonLicenseHistoryToolStripMenuItem_Click(object sender, System.EventArgs e)
+        private async void showPersonLicenseHistoryToolStripMenuItem_Click(object sender, System.EventArgs e)
         {
             if (int.TryParse(dgvInternationalLicenses.CurrentRow.Cells[2].Value.ToString(), out int DriverID))
             {
-                ClsDriver Driver = ClsDriver.Find(DriverID);
+                ClsDriver Driver = await ClsDriver.FindAsync(DriverID);
                 if (Driver != null)
                 {
                     ShowPersonLicenseHistory PersonLicenseHistory = new ShowPersonLicenseHistory(Driver.PersonID);

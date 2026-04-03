@@ -1,6 +1,7 @@
 ﻿using DataAccessLayer;
 using DTO;
 using System;
+using System.Threading.Tasks;
 
 namespace BusinessLayer
 {
@@ -21,7 +22,7 @@ namespace BusinessLayer
         public int ApplicationID { get; set; }
         public int ApplicantPersonID { get; set; }
 
-        public ClsPerson ApplicantPersonInfo { get; private set; }
+        public ClsPerson ApplicantPersonInfo { get; protected set; }
         public DateTime ApplicationDate { get; set; }
         public int ApplicationTypeID { get; set; }
         public ClsApplicationsTypes ApplicationTypeInfo { get; protected set; }
@@ -50,7 +51,7 @@ namespace BusinessLayer
         public float PaidFees { get; set; }
         public int CreatedByUserID { get; set; }
 
-        public ClsUser CreatedByUserInfo { get; private set; }
+        public ClsUser CreatedByUserInfo { get; protected set; }
 
         #region Constructors
         // Default constructor: initialize defaults and mark as AddNew for insertion.
@@ -72,16 +73,13 @@ namespace BusinessLayer
         {
             this.ApplicationID = Application.ApplicationID;
             this.ApplicantPersonID = Application.ApplicantPersonID;
-            this.ApplicantPersonInfo = ClsPerson.Find(this.ApplicantPersonID);
             this.ApplicationDate = Application.ApplicationDate;
             this.ApplicationTypeID = Application.ApplicationTypeID;
             this.ApplicationType = (EnApplicationType)ApplicationTypeID;
-            this.ApplicationTypeInfo = ClsApplicationsTypes.Find(ApplicationTypeID);
             this.ApplicationStatus = (EnApplicationStatus)Application.Status;
             this.LastStatusDate = Application.LastStatusDate;
             this.PaidFees = Application.PaidFees;
             this.CreatedByUserID = Application.CreatedByUserID;
-            this.CreatedByUserInfo = ClsUser.Find(this.CreatedByUserID);
             this.Mode = EnMode.Update;
         }
         #endregion
@@ -103,33 +101,48 @@ namespace BusinessLayer
         }
 
         #region Find Method
-        // Retrieve an application by ID from the data layer; return business object or null.
-        public static ClsApplications Find(int ApplicationID)
+        private async Task LoadRelatedDataAsync()
         {
-            ApplicationDTO Application = ClsApplicationsData.Find(ApplicationID);
+            this.ApplicantPersonInfo = await ClsPerson.FindAsync(this.ApplicantPersonID);
+            this.ApplicationTypeInfo = await ClsApplicationsTypes.FindAsync(this.ApplicationTypeID);
+            this.CreatedByUserInfo = await ClsUser.FindAsync(this.CreatedByUserID);
+        }
 
-            if (Application == null) { return null; }
+        // Retrieve an application by ID from the data layer; return business object or null.
+        public static async Task<ClsApplications> FindAsync(int ApplicationID)
+        {
+            ApplicationDTO ApplicationDTO = await ClsApplicationsData.FindAsync(ApplicationID);
 
-            return new ClsApplications(Application);
+            if (ApplicationDTO == null) { return null; }
+
+            ClsApplications ApplicationObj = new ClsApplications(ApplicationDTO);
+
+            await ApplicationObj.LoadRelatedDataAsync();
+
+            return ApplicationObj;
         }
 
         //Find Application for a Person by Appliction Type
-        public static ClsApplications FindActiveApplicationType(int ApplicantPersonID, int ApplicationTypeID)
+        public static async Task<ClsApplications> FindActiveApplicationTypeAsync(int ApplicantPersonID, int ApplicationTypeID)
         {
-            ApplicationDTO Application = ClsApplicationsData.FindActiveApplicationType(ApplicantPersonID, ApplicationTypeID);
+            ApplicationDTO ApplicationDTO = await ClsApplicationsData.FindActiveApplicationTypeAsync(ApplicantPersonID, ApplicationTypeID);
 
-            if (Application == null) { return null; }
+            if (ApplicationDTO == null) { return null; }
 
-            return new ClsApplications(Application);
+            ClsApplications ApplicationObj = new ClsApplications(ApplicationDTO);
+
+            await ApplicationObj.LoadRelatedDataAsync();
+
+            return ApplicationObj;
         }
         #endregion
 
         #region AddNew/Update/Delete Methods
-        public virtual bool Delete() => ClsApplicationsData.Delete(this.ApplicationID);
+        public virtual Task<bool> DeleteAsync() => ClsApplicationsData.DeleteAsync(this.ApplicationID);
 
-        private bool ChangeStatus(EnApplicationStatus newStatus)
+        private async Task<bool> ChangeStatusAsync(EnApplicationStatus newStatus)
         {
-            if (ClsApplicationsData.UpdateStatus(this.ApplicationID, (short)newStatus))
+            if (await ClsApplicationsData.UpdateStatusAsync(this.ApplicationID, (short)newStatus))
             {
                 this.ApplicationStatus = newStatus;
                 this.LastStatusDate = DateTime.Now;
@@ -138,28 +151,28 @@ namespace BusinessLayer
             return false;
         }
 
-        public bool Cancel() => ChangeStatus(EnApplicationStatus.Cancelled);
-        public bool SetComplete() => ChangeStatus(EnApplicationStatus.Completed);
+        public Task<bool> CancelAsync() => ChangeStatusAsync(EnApplicationStatus.Cancelled);
+        public Task<bool> SetCompleteAsync() => ChangeStatusAsync(EnApplicationStatus.Completed);
 
         // Insert this instance as a new record and update ApplicationID; return success.
-        private bool AddNew()
+        private async Task<bool> AddNewAsync()
         {
-            this.ApplicationID = ClsApplicationsData.AddNew(MappingToDTO());
+            this.ApplicationID = await ClsApplicationsData.AddNewAsync(MappingToDTO());
 
             return (this.ApplicationID != -1);
         }
 
         // Update existing record in the data layer using the mapped DTO; return success.
-        private bool Update() => ClsApplicationsData.Update(MappingToDTO());
+        private Task<bool> UpdateAsync() => ClsApplicationsData.UpdateAsync(MappingToDTO());
 
-        private bool BusinessRules()
+        private async Task<bool> BusinessRulesAsync()
         {
             if (Mode == EnMode.AddNew)
             {
                 if (this.ApplicationType == EnApplicationType.RetakeTest || this.ApplicationType == EnApplicationType.NewDrivingLicense)
                     return true;
 
-                return (FindActiveApplicationType(this.ApplicantPersonID, this.ApplicationTypeID) == null);
+                return (await FindActiveApplicationTypeAsync(this.ApplicantPersonID, this.ApplicationTypeID) == null);
             }
             else if (Mode == EnMode.Update)
             { return (this.ApplicationStatus != EnApplicationStatus.Cancelled); }
@@ -168,17 +181,17 @@ namespace BusinessLayer
         }
 
         // Persist this object: insert if AddNew (and switch to Update on success), otherwise update.
-        public virtual bool Save()
+        public virtual async Task<bool> SaveAsync()
         {
-            if (BusinessRules())
+            if (await BusinessRulesAsync())
             {
                 switch (Mode)
                 {
                     case EnMode.AddNew:
-                        if (AddNew()) { this.Mode = EnMode.Update; return true; }
+                        if (await AddNewAsync()) { this.Mode = EnMode.Update; return true; }
                         return false;
                     case EnMode.Update:
-                        return Update();
+                        return await UpdateAsync();
                     default: return false;
                 }
             }

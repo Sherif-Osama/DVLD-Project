@@ -3,19 +3,20 @@ using DTO;
 using System;
 using System.Data;
 using System.Data.SqlClient;
+using System.Threading.Tasks;
 namespace DataAccessLayer
 {
     // Data access class for Applications database operations.
     public static class ClsApplicationsData
     {
         // Read an application from SqlDataReader and return as ApplicationDTO.
-        private static ApplicationDTO ReadData(SqlCommand Comd)
+        private static async Task<ApplicationDTO> ReadDataAsync(SqlCommand Comd)
         {
             try
             {
-                using (SqlDataReader Read = Comd.ExecuteReader())
+                using (SqlDataReader Read = await Comd.ExecuteReaderAsync())
                 {
-                    if (Read.Read())
+                    if (await Read.ReadAsync())
                     {
                         return new ApplicationDTO
                         {
@@ -57,7 +58,7 @@ namespace DataAccessLayer
         }
 
         // Find an application by ID and return as ApplicationDTO.
-        public static ApplicationDTO Find(int ApplicationID)
+        public static async Task<ApplicationDTO> FindAsync(int ApplicationID)
         {
             string Query = "SELECT * FROM Applications WHERE ApplicationID = @ApplicationID";
 
@@ -65,11 +66,11 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@ApplicationID", SqlDbType.Int).Value = ApplicationID;
-                        return ReadData(Comd);
+                        return await ReadDataAsync(Comd);
                     }
                 }
             }
@@ -77,7 +78,7 @@ namespace DataAccessLayer
         }
 
         // Insert a new application and return the new ID (or -1 on error).
-        public static int AddNew(ApplicationDTO Application)
+        public static async Task<int> AddNewAsync(ApplicationDTO Application)
         {
             string Query = @"INSERT INTO Applications (ApplicantPersonID, ApplicationDate, ApplicationTypeID, ApplicationStatus, LastStatusDate, PaidFees, CreatedByUserID)
                              VALUES (@ApplicantPersonID, @ApplicationDate, @ApplicationTypeID, @ApplicationStatus, @LastStatusDate, @PaidFees, @CreatedByUserID);
@@ -86,12 +87,12 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         AddParameters(Comd, Application);
 
-                        return UtilitiesClass.ExecuteScalar(Comd);
+                        return await UtilitiesClass.ExecuteScalarAsync(Comd);
                     }
                 }
             }
@@ -99,7 +100,7 @@ namespace DataAccessLayer
         }
 
         // Update an existing application record.
-        public static bool Update(ApplicationDTO Application)
+        public static async Task<bool> UpdateAsync(ApplicationDTO Application)
         {
             string Query = @"UPDATE Applications
                              SET ApplicantPersonID = @ApplicantPersonID,
@@ -114,11 +115,11 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         AddParameters(Comd, Application);
-                        return (UtilitiesClass.ExecuteNonQuery(Comd) > 0);
+                        return (await UtilitiesClass.ExecuteNonQueryAsync(Comd) > 0);
                     }
                 }
             }
@@ -126,26 +127,26 @@ namespace DataAccessLayer
         }
 
         // Find an active (in-progress) application for a person with a specific application type.
-        public static ApplicationDTO FindActiveApplicationType(int ApplicantPersonID, int ApplicationTypeID)
+        public static async Task<ApplicationDTO> FindActiveApplicationTypeAsync(int ApplicantPersonID, int ApplicationTypeID)
         {
             string Query = "SELECT * FROM Applications WHERE ApplicationTypeID = @ApplicationTypeID AND ApplicantPersonID = @ApplicantPersonID And ApplicationStatus = 1";
             try
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@ApplicantPersonID", SqlDbType.Int).Value = ApplicantPersonID;
                         Comd.Parameters.Add("@ApplicationTypeID", SqlDbType.Int).Value = ApplicationTypeID;
-                        return ReadData(Comd);
+                        return await ReadDataAsync(Comd);
                     }
                 }
             }
             catch (Exception Ex) { ClsLogger.Log(Ex); return null; }
         }
 
-        public static bool UpdateStatus(int ApplicationID, short NewStatus)
+        public static async Task<bool> UpdateStatusAsync(int ApplicationID, short NewStatus)
         {
             string Query = @"UPDATE Applications
                              SET ApplicationStatus = @ApplicationStatus,
@@ -155,21 +156,21 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@ApplicationID", SqlDbType.Int).Value = ApplicationID;
                         Comd.Parameters.Add("@ApplicationStatus", SqlDbType.SmallInt).Value = NewStatus;
                         Comd.Parameters.Add("@LastStatusDate", SqlDbType.DateTime).Value = DateTime.Now;
 
-                        return (UtilitiesClass.ExecuteNonQuery(Comd) > 0);
+                        return (await UtilitiesClass.ExecuteNonQueryAsync(Comd) > 0);
                     }
                 }
             }
             catch (Exception Ex) { ClsLogger.Log(Ex); return false; }
         }
 
-        public static bool Delete(int ApplicationID)
+        public static async Task<bool> DeleteAsync(int ApplicationID)
         {
             string Qeury = "DELETE From Applications WHERE ApplicationID = @ApplicationID";
 
@@ -177,11 +178,11 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Qeury, Conn))
                     {
                         Comd.Parameters.Add("@ApplicationID", SqlDbType.Int).Value = ApplicationID;
-                        return (UtilitiesClass.ExecuteNonQuery(Comd) > 0);
+                        return (await UtilitiesClass.ExecuteNonQueryAsync(Comd) > 0);
                     }
                 }
             }

@@ -4,6 +4,7 @@ using DVLD.Global_classes;
 using GlobalClasses;
 using System;
 using System.Data;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using static BusinessLayer.ClsApplications;
 
@@ -28,8 +29,6 @@ namespace DVLD.Applications.Local_driving_license
         {
             InitializeComponent();
 
-            // Load application types
-            ApplicationsTypes = ClsApplicationsTypes.Find((int)ClsApplications.EnApplicationType.NewDrivingLicense);
             // Disable application info tab until needed
             InitializetabApplicationInfoTab(false);
             Mode = EnMode.AddNew;
@@ -43,9 +42,12 @@ namespace DVLD.Applications.Local_driving_license
         }
 
         #region Form Load Operations
-        private void AddUpdateLocalDrivingLicenseApplication_Load(object sender, EventArgs e)
+        private async void AddUpdateLocalDrivingLicenseApplication_Load(object sender, EventArgs e)
         {
-            InitializeCBLicenseClass();
+            // Load application types
+            ApplicationsTypes = await ClsApplicationsTypes.FindAsync((int)ClsApplications.EnApplicationType.NewDrivingLicense);
+
+            await InitializeCBLicenseClass();
 
             // Load form depending on mode
             switch (Mode)
@@ -55,7 +57,7 @@ namespace DVLD.Applications.Local_driving_license
                     break;
 
                 case EnMode.Update:
-                    UpdateUIFromLoadedData();
+                    await UpdateUIFromLoadedData();
                     break;
             }
         }
@@ -78,23 +80,23 @@ namespace DVLD.Applications.Local_driving_license
         }
         #endregion
         #region Update Mode Load Operations
-        private void UpdateUIFromLoadedData()
+        private async Task UpdateUIFromLoadedData()
         {
             InitializetabApplicationInfoTab(true);
-            LoadApplicationData();
+            await LoadApplicationData();
         }
 
-        private void LoadApplicationData()
+        private async Task LoadApplicationData()
         {
             LabAddUpadate.Text = "Edit local driving license application";
             try
             {
                 // Load application by ID
-                LocalDrivingLicenseApplication = ClsLocalDrivingLicenseApplication.Find(LocalDrivingLicenseAppLicationID);
+                LocalDrivingLicenseApplication = await ClsLocalDrivingLicenseApplication.FindAsync(LocalDrivingLicenseAppLicationID);
 
                 if (LocalDrivingLicenseApplication != null)
                 {
-                    ctrlPersonCardWithFilter1.LoadPerson(LocalDrivingLicenseApplication.ApplicantPersonID);
+                    await ctrlPersonCardWithFilter1.LoadPersonAsync(LocalDrivingLicenseApplication.ApplicantPersonID);
                     lblLocalDrivingLicebseApplicationID.Text = LocalDrivingLicenseApplication.ApplicationID.ToString();
                     lblCreatedByUser.Text = LocalDrivingLicenseApplication.CreatedByUserInfo?.UserName ?? "Unknown";
                     lblApplicationDate.Text = LocalDrivingLicenseApplication.ApplicationDate.ToString("dd/MM/yyyy");
@@ -123,10 +125,10 @@ namespace DVLD.Applications.Local_driving_license
             Nextbutton.Enabled = IsEnabled;
         }
 
-        private void InitializeCBLicenseClass()
+        private async Task InitializeCBLicenseClass()
         {
             // Load all license classes into combo box
-            DataTable dt = ClsLicenseClasses.GetAllLicenseClassName();
+            DataTable dt = await ClsLicenseClasses.GetAllLicenseClassesAsync();
 
             if (dt != null)
             {
@@ -151,10 +153,10 @@ namespace DVLD.Applications.Local_driving_license
             cbLicenseClass.Focus();
         }
 
-        private bool ApplicationValidation(int LicenseClassID)
+        private async Task<bool> ApplicationValidation(int LicenseClassID)
         {
             // Prevent creating a license if person already has one with the same class
-            if (ClsLicenses.IsLicenseExist(LocalDrivingLicenseApplication.ApplicantPersonID, LicenseClassID))
+            if (await ClsLicenses.IsLicenseExistAsync(LocalDrivingLicenseApplication.ApplicantPersonID, LicenseClassID))
             {
                 errorProvider1.SetError(cbLicenseClass, "This person already has a license of the same type.");
                 tabControl1.SelectedIndex = 2;
@@ -162,7 +164,7 @@ namespace DVLD.Applications.Local_driving_license
                 return false;
             }
 
-            bool IsActive = ClsLocalDrivingLicenseApplication.HasActiveApplication(LocalDrivingLicenseApplication.ApplicantPersonID, LicenseClassID);
+            bool IsActive = await ClsLocalDrivingLicenseApplication.HasActiveApplicationAsync(LocalDrivingLicenseApplication.ApplicantPersonID, LicenseClassID);
 
             if (Mode == EnMode.Update)
             {
@@ -181,14 +183,14 @@ namespace DVLD.Applications.Local_driving_license
             return true;
         }
 
-        private void Save_Click(object sender, EventArgs e)
+        private async void Save_Click(object sender, EventArgs e)
         {
             // Get selected license class ID
             string LicenseClassName = cbLicenseClass?.Text ?? string.Empty;
 
-            int LicenseClassID = ClsLicenseClasses.Find(LicenseClassName)?.LicenseClassID ?? -1;
+            int LicenseClassID = (await ClsLicenseClasses.FindAsync(LicenseClassName))?.LicenseClassID ?? -1;
 
-            if (ApplicationValidation(LicenseClassID))
+            if (await ApplicationValidation(LicenseClassID))
             {
                 if (Mode == EnMode.AddNew)
                 {
@@ -208,7 +210,7 @@ namespace DVLD.Applications.Local_driving_license
                 }
 
                 // Save data to database
-                if (LocalDrivingLicenseApplication.Save())
+                if (await LocalDrivingLicenseApplication.SaveAsync())
                 {
                     lblLocalDrivingLicebseApplicationID.Text = LocalDrivingLicenseApplication.ApplicationID.ToString();
                     MessageBox.Show("Saved successfully", "", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -219,9 +221,7 @@ namespace DVLD.Applications.Local_driving_license
                     this.Close();
                 }
                 else
-                {
-                    MessageBox.Show("An error occurred while saving. Try again", "", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
+                { MessageBox.Show("An error occurred while saving. Try again", "", MessageBoxButtons.OK, MessageBoxIcon.Error); }
             }
         }
         #endregion
@@ -255,6 +255,5 @@ namespace DVLD.Applications.Local_driving_license
         private void butCancel_Click(object sender, EventArgs e) => this.Close();
         #endregion
         private void cbLicenseClass_SelectedIndexChanged(object sender, EventArgs e) => errorProvider1.SetError(cbLicenseClass, "");
-
     }
 }

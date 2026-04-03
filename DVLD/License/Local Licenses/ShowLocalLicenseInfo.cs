@@ -11,7 +11,7 @@ namespace DVLD.License
             this.LicenseID = licenseID;
         }
 
-        private void ShowLicenseInfo_Load(object sender, System.EventArgs e) => ctrlDriverLicenseInfo1.LoadLicenseInfo(this.LicenseID);
+        private async void ShowLicenseInfo_Load(object sender, System.EventArgs e) => await ctrlDriverLicenseInfo1.LoadLicenseInfoAsync(this.LicenseID);
 
         private void btnClose_Click(object sender, System.EventArgs e) => this.Close();
     }

@@ -22,7 +22,7 @@ namespace DVLD.License.Detain_License
 
         private void btnClose_Click(object sender, EventArgs e) => this.Close();
 
-        private void btnDetain_Click(object sender, EventArgs e)
+        private async void btnDetain_Click(object sender, EventArgs e)
         {
             if (ClsValidation.ValidateEmptyTextBoxes(errorProvider1, this.gpDetain))
             {
@@ -31,7 +31,7 @@ namespace DVLD.License.Detain_License
                 {
                     float Fees = string.IsNullOrWhiteSpace(txtFineFees.Text.Trim()) ? 0 : Convert.ToSingle(txtFineFees.Text.Trim());
 
-                    int DetainID = DetainedLicense.Detain(Fees, ClsGlobal.CurrentUser.UserID);
+                    int DetainID = await DetainedLicense.DetainAsync(Fees, ClsGlobal.CurrentUser.UserID);
 
                     if (DetainID != -1)
                     {
@@ -54,11 +54,11 @@ namespace DVLD.License.Detain_License
             }
         }
 
-        private void ctrlDriverLicenseInfoWithFilter1_LicenseSearchCompleted(object sender, ctrlDriverLicenseInfoWithFilter.FilterResult e)
+        private async void ctrlDriverLicenseInfoWithFilter1_LicenseSearchCompleted(object sender, ctrlDriverLicenseInfoWithFilter.FilterResult e)
         {
             if (e.IsFound)
             {
-                DetainedLicense = ClsLicenses.Find(e.LicenseID);
+                DetainedLicense = await ClsLicenses.FindAsync(e.LicenseID);
 
                 if (DetainedLicense != null)
                 {

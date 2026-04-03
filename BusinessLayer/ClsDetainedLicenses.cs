@@ -2,6 +2,7 @@
 using DTO;
 using System;
 using System.Data;
+using System.Threading.Tasks;
 namespace BusinessLayer
 {
     // Represents a detained driving license record and related operations.
@@ -81,12 +82,12 @@ namespace BusinessLayer
         }
 
         // Static helper to get all detained license records.
-        public static DataTable GetAllDetainedLicenses() => ClsDetainedLicenseData.GetAllDetainedLicenses();
+        public static Task<DataTable> GetAllDetainedLicensesAsync() => ClsDetainedLicenseData.GetAllDetainedLicensesAsync();
 
         // Find a detained license by its DetainID.
-        public static ClsDetainedLicenses Find(int DetainID)
+        public static async Task<ClsDetainedLicenses> FindAsync(int DetainID)
         {
-            DetainedLicenseDTO DLDTO = ClsDetainedLicenseData.Find(DetainID);
+            DetainedLicenseDTO DLDTO = await ClsDetainedLicenseData.FindAsync(DetainID);
 
             if (DLDTO == null) { return null; }
 
@@ -94,9 +95,9 @@ namespace BusinessLayer
         }
 
         // Find a detained license record by the detained LicenseID (the license itself).
-        public static ClsDetainedLicenses FindByLicenseID(int LicenseID)
+        public static async Task<ClsDetainedLicenses> FindByLicenseIDAsync(int LicenseID)
         {
-            DetainedLicenseDTO DLDTO = ClsDetainedLicenseData.FindByLicenseID(LicenseID);
+            DetainedLicenseDTO DLDTO = await ClsDetainedLicenseData.FindByLicenseIDAsync(LicenseID);
 
             if (DLDTO == null) { return null; }
 
@@ -104,51 +105,51 @@ namespace BusinessLayer
         }
 
         // Check if a given license is currently detained.
-        public static bool IsLicenseDetained(int LicenseID) => ClsDetainedLicenseData.IsLicenseDetained(LicenseID);
+        public static Task<bool> IsLicenseDetainedAsync(int LicenseID) => ClsDetainedLicenseData.IsLicenseDetainedAsync(LicenseID);
 
         // Release the detained license: mark released fields and persist changes.
-        public bool Release(int ReleasedByUserID, int ApplicationID)
+        public async Task<bool> ReleaseAsync(int ReleasedByUserID, int ApplicationID)
         {
             this.IsReleased = true;
             this.ReleaseDate = DateTime.Now;
             this.ReleasedByUserID = ReleasedByUserID;
             this.ReleaseApplicationID = ApplicationID;
 
-            return this.Save();
+            return await this.SaveAsync();
         }
 
         // Add a new detained license record to the data store.
-        private bool AddNew()
+        private async Task<bool> AddNewAsync()
         {
-            this.DetainID = ClsDetainedLicenseData.AddNew(MappingToDTO());
+            this.DetainID = await ClsDetainedLicenseData.AddNewAsync(MappingToDTO());
             return (this.DetainID != -1);
         }
 
         // Update an existing detained license record in the data store.
-        private bool Update() => ClsDetainedLicenseData.Update(MappingToDTO());
+        private Task<bool> UpdateAsync() => ClsDetainedLicenseData.UpdateAsync(MappingToDTO());
 
-        private bool BusinessRules()
+        private async Task<bool> BusinessRulesAsync()
         {
             if (Mode == EnMode.AddNew)
-            { return !IsLicenseDetained(this.LicenseID); }
+            { return !await IsLicenseDetainedAsync(this.LicenseID); }
             else if (Mode == EnMode.Update)
-            { return IsLicenseDetained(this.LicenseID); }
+            { return await IsLicenseDetainedAsync(this.LicenseID); }
 
             return false;
         }
 
         // Save the current instance by respecting business rules and mode.
-        public bool Save()
+        public async Task<bool> SaveAsync()
         {
-            if (BusinessRules())
+            if (await BusinessRulesAsync())
             {
                 switch (Mode)
                 {
                     case EnMode.AddNew:
-                        if (AddNew()) { Mode = EnMode.Update; return true; }
+                        if (await AddNewAsync()) { Mode = EnMode.Update; return true; }
                         return false;
                     case EnMode.Update:
-                        return Update();
+                        return await UpdateAsync();
                     default:
                         return false;
                 }

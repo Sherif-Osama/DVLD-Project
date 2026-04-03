@@ -11,7 +11,7 @@ namespace DVLD.Applications.ApplicationsTypes
         private int ApplicationID;
 
         // Object to store the application type being edited
-        ClsApplicationsTypes ApplicationsTypes;
+        private ClsApplicationsTypes ApplicationsTypes;
 
         public EditApplications(int ApplicationID)
         {
@@ -20,9 +20,9 @@ namespace DVLD.Applications.ApplicationsTypes
         }
 
         #region load application info
-        private void EditApplications_Load(object sender, EventArgs e)
+        private async void EditApplications_Load(object sender, EventArgs e)
         {
-            ApplicationsTypes = ClsApplicationsTypes.Find(ApplicationID);
+            ApplicationsTypes = await ClsApplicationsTypes.FindAsync(ApplicationID);
 
             if (ApplicationsTypes != null)
             {
@@ -37,7 +37,7 @@ namespace DVLD.Applications.ApplicationsTypes
 
         #region save edited application info
         // Triggered when the user clicks the "Save" button
-        private void btnSave_Click(object sender, EventArgs e)
+        private async void btnSave_Click(object sender, EventArgs e)
         {
             // Validate that all required textboxes have valid values
             if (ClsValidation.ValidateEmptyTextBoxes(errorProvider1, this))
@@ -47,7 +47,7 @@ namespace DVLD.Applications.ApplicationsTypes
                 ApplicationsTypes.Fees = float.TryParse(txtFees.Text, out float Fees) ? Fees : ApplicationsTypes.Fees;
 
                 // Save the updated data
-                if (ApplicationsTypes.Save())
+                if (await ApplicationsTypes.SaveAsync())
                 { MessageBox.Show("Saved successfully", "", MessageBoxButtons.OK, MessageBoxIcon.Information); }
                 else
                     MessageBox.Show("An error occurred while saving. Try again", "", MessageBoxButtons.OK, MessageBoxIcon.Error);

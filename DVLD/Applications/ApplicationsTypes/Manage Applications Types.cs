@@ -1,6 +1,7 @@
 ﻿using BusinessLayer;
 using DVLD.Applications.ApplicationsTypes;
 using System;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace DVLD
@@ -14,9 +15,9 @@ namespace DVLD
         }
 
         // Loads all application types data into the DataGridView
-        private void LoadDataGridView()
+        private async Task LoadDataGridView()
         {
-            dgvApplicationTypes.DataSource = ClsApplicationsTypes.GetAllApplicationsTypes();
+            dgvApplicationTypes.DataSource = await ClsApplicationsTypes.GetAllApplicationsTypesAsync();
 
             int NumberOfRows = dgvApplicationTypes.Rows.Count;
             lblRecordsCount.Text = NumberOfRows.ToString(); // Displays total records count
@@ -36,13 +37,13 @@ namespace DVLD
         }
 
         // Triggered when the form loads — populates the DataGridView
-        private void ManageApplicationsTypes_Load(object sender, EventArgs e) => LoadDataGridView();
+        private async void ManageApplicationsTypes_Load(object sender, EventArgs e) => await LoadDataGridView();
 
         // Closes the current form when the "Close" button is clicked
         private void btnClose_Click(object sender, EventArgs e) => this.Close();
 
         // Triggered when user clicks "Edit" option from context menu
-        private void editToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void editToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // Gets the selected Application Type ID from the DataGridView
             if (int.TryParse(dgvApplicationTypes?.CurrentRow?.Cells[0]?.Value?.ToString(), out int ID))
@@ -52,7 +53,7 @@ namespace DVLD
                 Edit.ShowDialog();
 
                 // Refreshes the DataGridView after editing
-                LoadDataGridView();
+                await LoadDataGridView();
             }
         }
     }

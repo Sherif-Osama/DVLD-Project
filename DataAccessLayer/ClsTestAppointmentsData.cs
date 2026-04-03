@@ -3,6 +3,7 @@ using DTO;
 using System;
 using System.Data;
 using System.Data.SqlClient;
+using System.Threading.Tasks;
 
 namespace DataAccessLayer
 {
@@ -10,13 +11,13 @@ namespace DataAccessLayer
     public static class ClsTestAppointmentsData
     {
         // Read a test appointment from SqlDataReader and return as TestAppointmentsDTO.
-        private static TestAppointmentsDTO ReadAppointment(SqlCommand Comd)
+        private static async Task<TestAppointmentsDTO> ReadAppointmentAsync(SqlCommand Comd)
         {
             try
             {
-                using (SqlDataReader Reader = Comd.ExecuteReader())
+                using (SqlDataReader Reader = await Comd.ExecuteReaderAsync())
                 {
-                    if (Reader.Read())
+                    if (await Reader.ReadAsync())
                     {
                         return new TestAppointmentsDTO
                         {
@@ -64,7 +65,7 @@ namespace DataAccessLayer
         }
 
         // Get all appointments for an application and test type, ordered by date descending.
-        public static DataTable GetAllApplicationTestAppointments(int ApplicationID, int TestTypeID)
+        public static async Task<DataTable> GetAllApplicationTestAppointmentsAsync(int ApplicationID, int TestTypeID)
         {
             string Query = @"SELECT TestAppointmentID, AppointmentDate,PaidFees, IsLocked 
                                 FROM TestAppointments 
@@ -74,13 +75,13 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Cmd = new SqlCommand(Query, Conn))
                     {
                         Cmd.Parameters.AddWithValue("@ApplicationID", ApplicationID);
                         Cmd.Parameters.AddWithValue("@TestTypeID", TestTypeID);
 
-                        return UtilitiesClass.ExecuteDataTable(Cmd);
+                        return await UtilitiesClass.ExecuteDataTableAsync(Cmd);
                     }
                 }
             }
@@ -88,7 +89,7 @@ namespace DataAccessLayer
         }
 
         // Find an appointment by ID and return as TestAppointmentsDTO.
-        public static TestAppointmentsDTO Find(int AppointmentID)
+        public static async Task<TestAppointmentsDTO> FindAsync(int AppointmentID)
         {
             string Query = @"SELECT * FROM TestAppointments 
                                 WHERE TestAppointmentID = @AppointmentID";
@@ -96,12 +97,12 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Cmd = new SqlCommand(Query, Conn))
                     {
                         Cmd.Parameters.Add("@AppointmentID", SqlDbType.Int).Value = AppointmentID;
 
-                        return ReadAppointment(Cmd);
+                        return await ReadAppointmentAsync(Cmd);
                     }
                 }
             }
@@ -109,7 +110,7 @@ namespace DataAccessLayer
         }
 
         // Check if an appointment is locked.
-        public static bool IsLocked(int AppointmentID)
+        public static async Task<bool> IsLockedAsync(int AppointmentID)
         {
             string Query = @"SELECT IsLocked FROM TestAppointments 
                                 WHERE TestAppointmentID = @AppointmentID";
@@ -117,12 +118,12 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Cmd = new SqlCommand(Query, Conn))
                     {
                         Cmd.Parameters.Add("@AppointmentID", SqlDbType.Int).Value = AppointmentID;
 
-                        return (UtilitiesClass.ExecuteScalar(Cmd) != -1);
+                        return (await UtilitiesClass.ExecuteScalarAsync(Cmd) != -1);
                     }
                 }
             }
@@ -130,7 +131,7 @@ namespace DataAccessLayer
         }
 
         // Insert a new appointment and return the new ID (or -1 on error).
-        public static int AddNew(TestAppointmentsDTO TAD)
+        public static async Task<int> AddNewAsync(TestAppointmentsDTO TAD)
         {
             string Query = @"INSERT INTO TestAppointments(TestTypeID,LocalDrivingLicenseApplicationID,AppointmentDate,PaidFees,CreatedByUserID,IsLocked,RetakeTestApplicationID)
                                  VALUES (@TestTypeID,@LocalDrivingLicenseApplicationID, @AppointmentDate, @PaidFees, @CreatedByUserID, @IsLocked, @RetakeTestApplicationID) 
@@ -140,12 +141,12 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Cmd = new SqlCommand(Query, Conn))
                     {
                         SetParameters(Cmd, TAD);
 
-                        return UtilitiesClass.ExecuteScalar(Cmd);
+                        return await UtilitiesClass.ExecuteScalarAsync(Cmd);
                     }
                 }
             }
@@ -153,7 +154,7 @@ namespace DataAccessLayer
         }
 
         // Update an existing appointment record.
-        public static bool Update(TestAppointmentsDTO TAD)
+        public static async Task<bool> UpdateAsync(TestAppointmentsDTO TAD)
         {
             string Query = @"UPDATE TestAppointments SET 
                                 TestTypeID = @TestTypeID,
@@ -169,19 +170,19 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Cmd = new SqlCommand(Query, Conn))
                     {
                         SetParameters(Cmd, TAD);
 
-                        return (UtilitiesClass.ExecuteNonQuery(Cmd) > 0);
+                        return (await UtilitiesClass.ExecuteNonQueryAsync(Cmd) > 0);
                     }
                 }
             }
             catch (Exception ex) { ClsLogger.Log(ex); return false; }
         }
 
-        public static bool LockAppointment(int AppointmentID)
+        public static async Task<bool> LockAppointmentAsync(int AppointmentID)
         {
             string Query = @"UPDATE TestAppointments SET 
                                 IsLocked = 1 WHERE TestAppointmentID = @TestAppointmentID";
@@ -189,12 +190,12 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Cmd = new SqlCommand(Query, Conn))
                     {
                         Cmd.Parameters.Add("@TestAppointmentID", SqlDbType.Int).Value = AppointmentID;
 
-                        return (UtilitiesClass.ExecuteNonQuery(Cmd) > 0);
+                        return (await UtilitiesClass.ExecuteNonQueryAsync(Cmd) > 0);
                     }
                 }
             }

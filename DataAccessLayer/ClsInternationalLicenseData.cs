@@ -3,6 +3,7 @@ using DTO;
 using System;
 using System.Data;
 using System.Data.SqlClient;
+using System.Threading.Tasks;
 namespace DataAccessLayer
 {
     public static class ClsInternationalLicenseData
@@ -27,13 +28,13 @@ namespace DataAccessLayer
                 Comd.Parameters.Add("@CreatedByUserID", SqlDbType.Int).Value = InternationalLicense.CreatedByUserID;
         }
 
-        private static InternationalLicenseDTO ReadData(SqlCommand Comd)
+        private static async Task<InternationalLicenseDTO> ReadDataAsync(SqlCommand Comd)
         {
             try
             {
-                using (SqlDataReader Reader = Comd.ExecuteReader())
+                using (SqlDataReader Reader = await Comd.ExecuteReaderAsync())
                 {
-                    if (Reader.Read())
+                    if (await Reader.ReadAsync())
                     {
                         return new InternationalLicenseDTO
                         {
@@ -58,7 +59,7 @@ namespace DataAccessLayer
             catch (Exception Ex) { ClsLogger.Log(Ex); return null; }
             return null;
         }
-        public static DataTable GetAllInternationalLicenses()
+        public static async Task<DataTable> GetAllInternationalLicensesAsync()
         {
             string Query = @"SELECT InternationalLicenseID,
                                 ApplicationID, 
@@ -72,17 +73,17 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
-                        return UtilitiesClass.ExecuteDataTable(Comd);
+                        return await UtilitiesClass.ExecuteDataTableAsync(Comd);
                     }
                 }
             }
             catch (Exception Ex) { ClsLogger.Log(Ex); return null; }
         }
 
-        public static DataTable GetDriverLicenses(int DriverID)
+        public static async Task<DataTable> GetDriverLicensesAsync(int DriverID)
         {
             string Query = @"SELECT InternationalLicenseID, ApplicationID,
 		                IssuedUsingLocalLicenseID , IssueDate, 
@@ -91,37 +92,37 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@DriverID", SqlDbType.Int).Value = DriverID;
 
-                        return UtilitiesClass.ExecuteDataTable(Comd);
+                        return await UtilitiesClass.ExecuteDataTableAsync(Comd);
                     }
                 }
             }
             catch (Exception Ex) { ClsLogger.Log(Ex); return null; }
         }
 
-        public static InternationalLicenseDTO Find(int InternationalLicenseID)
+        public static async Task<InternationalLicenseDTO> FindAsync(int InternationalLicenseID)
         {
             string Query = "SELECT * FROM InternationalLicenseFullApplication_View WHERE InternationalLicenseID = @InternationalLicenseID";
             try
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@InternationalLicenseID", SqlDbType.Int).Value = InternationalLicenseID;
-                        return ReadData(Comd);
+                        return await ReadDataAsync(Comd);
                     }
                 }
             }
             catch (Exception Ex) { ClsLogger.Log(Ex); return null; }
         }
 
-        public static InternationalLicenseDTO FindByDriverID(int DriverID)
+        public static async Task<InternationalLicenseDTO> FindByDriverIDAsync(int DriverID)
         {
             string Query = "SELECT * FROM InternationalLicenseFullApplication_View WHERE DriverID = @DriverID";
 
@@ -129,18 +130,18 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@DriverID", SqlDbType.Int).Value = DriverID;
 
-                        return ReadData(Comd);
+                        return await ReadDataAsync(Comd);
                     }
                 }
             }
             catch (Exception Ex) { ClsLogger.Log(Ex); return null; }
         }
-        public static InternationalLicenseDTO GetActiveInternationalLicenseByDriverID(int DriverID)
+        public static async Task<InternationalLicenseDTO> GetActiveInternationalLicenseByDriverIDAsync(int DriverID)
         {
             string Query = "SELECT * FROM InternationalLicenseFullApplication_View WHERE DriverID = @DriverID AND IsActive = 1";
 
@@ -148,19 +149,19 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@DriverID", SqlDbType.Int).Value = DriverID;
 
-                        return ReadData(Comd);
+                        return await ReadDataAsync(Comd);
                     }
                 }
             }
             catch (Exception Ex) { ClsLogger.Log(Ex); return null; }
         }
 
-        public static int AddNew(InternationalLicenseDTO InternationalLicense)
+        public static async Task<int> AddNewAsync(InternationalLicenseDTO InternationalLicense)
         {
             string Query = @"INSERT INTO InternationalLicenses(ApplicationID,DriverID,IssuedUsingLocalLicenseID,IssueDate,ExpirationDate,IsActive,CreatedByUserID)
                                 VALUES (@ApplicationID,@DriverID,@IssuedUsingLocalLicenseID,@IssueDate,@ExpirationDate,@IsActive,@CreatedByUserID)
@@ -169,18 +170,18 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         SetParameters(Comd, InternationalLicense);
-                        return UtilitiesClass.ExecuteScalar(Comd);
+                        return await UtilitiesClass.ExecuteScalarAsync(Comd);
                     }
                 }
             }
             catch (Exception Ex) { ClsLogger.Log(Ex); return -1; }
         }
 
-        public static bool Update(InternationalLicenseDTO InternationalLicense)
+        public static async Task<bool> UpdateAsync(InternationalLicenseDTO InternationalLicense)
         {
             string Query = @"UPDATE InternationalLicenses SET ApplicationID = @ApplicationID, DriverID = @DriverID, IssuedUsingLocalLicenseID = @IssuedUsingLocalLicenseID, IssueDate = @IssueDate, ExpirationDate = @ExpirationDate, IsActive = @IsActive
                             WHERE InternationalLicenseID = @InternationalLicenseID";
@@ -189,12 +190,12 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         SetParameters(Comd, InternationalLicense);
 
-                        return (UtilitiesClass.ExecuteNonQuery(Comd) > 0);
+                        return (await UtilitiesClass.ExecuteNonQueryAsync(Comd) > 0);
                     }
                 }
             }

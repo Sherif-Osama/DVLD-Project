@@ -1,6 +1,7 @@
 ﻿using DataAccessLayer;
 using DTO;
 using System.Data;
+using System.Threading.Tasks;
 
 namespace BusinessLayer
 {
@@ -22,20 +23,19 @@ namespace BusinessLayer
         }
 
         // Get all countries from DB
-        public static DataTable GetAllCountries() => ClsCountryData.GetAllCountries();
+        public static Task<DataTable> GetAllCountriesAsync() => ClsCountryData.GetAllCountriesAsync();
 
-        public static ClsCountry Find(int CountryID)
+        public static async Task<ClsCountry> FindAsync(int CountryID)
         {
-            CountryDTO Country = ClsCountryData.Find(CountryID);
-
+            CountryDTO Country = await ClsCountryData.FindAsync(CountryID);
             if (Country == null) { return null; }
 
             return new ClsCountry(Country);
         }
 
-        public static ClsCountry Find(string CountryName)
+        public static async Task<ClsCountry> FindAsync(string CountryName)
         {
-            CountryDTO Country = ClsCountryData.Find(CountryName);
+            CountryDTO Country = await ClsCountryData.FindAsync(CountryName);
 
             if (Country == null) { return null; }
 

@@ -3,6 +3,7 @@ using DTO;
 using System;
 using System.Data;
 using System.Data.SqlClient;
+using System.Threading.Tasks;
 
 namespace DataAccessLayer
 {
@@ -10,13 +11,13 @@ namespace DataAccessLayer
     public static class ClsLicenseClassesData
     {
         // Read a license class from SqlDataReader and return as LicenseClassesDTO.
-        private static LicenseClassesDTO ReadData(SqlCommand Comd)
+        private static async Task<LicenseClassesDTO> ReadDataAsync(SqlCommand Comd)
         {
             try
             {
-                using (SqlDataReader Reader = Comd.ExecuteReader())
+                using (SqlDataReader Reader = await Comd.ExecuteReaderAsync())
                 {
-                    if (Reader.Read())
+                    if (await Reader.ReadAsync())
                     {
                         return new LicenseClassesDTO
                         {
@@ -35,17 +36,17 @@ namespace DataAccessLayer
         }
 
         // Get all license class names as a DataTable.
-        public static DataTable GetAllLicenseClassName()
+        public static async Task<DataTable> GetAllLicenseClassesAsync()
         {
             string Query = "SELECT ClassName FROM LicenseClasses";
             try
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
-                        return UtilitiesClass.ExecuteDataTable(Comd);
+                        return await UtilitiesClass.ExecuteDataTableAsync(Comd);
                     }
                 }
             }
@@ -53,7 +54,7 @@ namespace DataAccessLayer
         }
 
         // Find a license class by ID and return as LicenseClassesDTO.
-        public static LicenseClassesDTO Find(int LicenseClassID)
+        public static async Task<LicenseClassesDTO> FindAsync(int LicenseClassID)
         {
             string Query = "SELECT * FROM LicenseClasses WHERE LicenseClassID = @LicenseClassID";
 
@@ -61,11 +62,11 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@LicenseClassID", SqlDbType.Int).Value = LicenseClassID;
-                        return ReadData(Comd);
+                        return await ReadDataAsync(Comd);
                     }
                 }
             }
@@ -73,7 +74,7 @@ namespace DataAccessLayer
         }
 
         // Find a license class by name and return as LicenseClassesDTO.
-        public static LicenseClassesDTO Find(string LicenseClassesName)
+        public static async Task<LicenseClassesDTO> FindAsync(string LicenseClassesName)
         {
             string Query = "SELECT * FROM LicenseClasses WHERE ClassName = @LicenseClassesName ";
 
@@ -81,11 +82,11 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@LicenseClassesName", SqlDbType.NVarChar).Value = LicenseClassesName;
-                        return ReadData(Comd);
+                        return await ReadDataAsync(Comd);
                     }
                 }
             }

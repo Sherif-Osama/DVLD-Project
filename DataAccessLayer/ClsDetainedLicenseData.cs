@@ -3,6 +3,7 @@ using DTO;
 using System;
 using System.Data;
 using System.Data.SqlClient;
+using System.Threading.Tasks;
 namespace DataAccessLayer
 {
     public static class ClsDetainedLicenseData
@@ -29,13 +30,13 @@ namespace DataAccessLayer
                 Command.Parameters.Add("@ReleaseApplicationID", SqlDbType.Int).Value = DetainedLicense.ReleaseApplicationID;
         }
 
-        private static DetainedLicenseDTO ReadData(SqlCommand Comd)
+        private static async Task<DetainedLicenseDTO> ReadDataAsync(SqlCommand Comd)
         {
-            using (SqlDataReader Reader = Comd.ExecuteReader())
+            using (SqlDataReader Reader = await Comd.ExecuteReaderAsync())
             {
                 try
                 {
-                    if (Reader.Read())
+                    if (await Reader.ReadAsync())
                     {
                         return new DetainedLicenseDTO()
                         {
@@ -56,7 +57,7 @@ namespace DataAccessLayer
             }
         }
 
-        public static DataTable GetAllDetainedLicenses()
+        public static async Task<DataTable> GetAllDetainedLicensesAsync()
         {
             string Query = "SELECT * FROM DetainedLicenses_View";
 
@@ -64,17 +65,17 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
-                        return UtilitiesClass.ExecuteDataTable(Comd);
+                        return await UtilitiesClass.ExecuteDataTableAsync(Comd);
                     }
                 }
             }
             catch (Exception Ex) { ClsLogger.Log(Ex); return null; }
         }
 
-        public static bool IsLicenseDetained(int LicenseID)
+        public static async Task<bool> IsLicenseDetainedAsync(int LicenseID)
         {
             string Query = @"SELECT COUNT(*) FROM DetainedLicenses WHERE LicenseID = @LicenseID AND IsReleased = 0";
 
@@ -82,19 +83,19 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Cmd = new SqlCommand(Query, Conn))
                     {
                         Cmd.Parameters.Add("@LicenseID", SqlDbType.Int).Value = LicenseID;
 
-                        return (UtilitiesClass.ExecuteScalar(Cmd) > 0);
+                        return (await UtilitiesClass.ExecuteScalarAsync(Cmd) > 0);
                     }
                 }
             }
             catch (Exception e) { ClsLogger.Log(e); return false; }
         }
 
-        public static DetainedLicenseDTO FindByLicenseID(int LicenseID)
+        public static async Task<DetainedLicenseDTO> FindByLicenseIDAsync(int LicenseID)
         {
             string Query = @"SELECT TOP 1 * FROM DetainedLicenses WHERE LicenseID = @LicenseID
                               ORDER BY DetainDate DESC, DetainID DESC";
@@ -103,19 +104,19 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@LicenseID", SqlDbType.Int).Value = LicenseID;
 
-                        return ReadData(Comd);
+                        return await ReadDataAsync(Comd);
                     }
                 }
             }
             catch (Exception Ex) { ClsLogger.Log(Ex); return null; }
         }
 
-        public static DetainedLicenseDTO Find(int DetainID)
+        public static async Task<DetainedLicenseDTO> FindAsync(int DetainID)
         {
             string Query = "SELECT * FROM DetainedLicenses WHERE DetainID = @DetainID";
 
@@ -123,19 +124,19 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@DetainID", SqlDbType.Int).Value = DetainID;
 
-                        return ReadData(Comd);
+                        return await ReadDataAsync(Comd);
                     }
                 }
             }
             catch (Exception Ex) { ClsLogger.Log(Ex); return null; }
         }
 
-        public static int AddNew(DetainedLicenseDTO DetainedLicenseDTO)
+        public static async Task<int> AddNewAsync(DetainedLicenseDTO DetainedLicenseDTO)
         {
             string Query = @"INSERT INTO DetainedLicenses(LicenseID, DetainDate ,FineFees ,CreatedByUserID ,IsReleased)
                                 VALUES(@LicenseID, @DetainDate, @FineFees, @CreatedByUserID, @IsReleased);                            
@@ -145,18 +146,18 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comm = new SqlCommand(Query, Conn))
                     {
                         SetParameters(Comm, DetainedLicenseDTO);
-                        return UtilitiesClass.ExecuteScalar(Comm);
+                        return await UtilitiesClass.ExecuteScalarAsync(Comm);
                     }
                 }
             }
             catch (Exception Ex) { ClsLogger.Log(Ex); return -1; }
         }
 
-        public static bool Update(DetainedLicenseDTO DetainedLicenseDTO)
+        public static async Task<bool> UpdateAsync(DetainedLicenseDTO DetainedLicenseDTO)
         {
             string Query = @"
                             UPDATE DetainedLicenses SET 
@@ -169,12 +170,12 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         SetParameters(Comd, DetainedLicenseDTO);
 
-                        return (UtilitiesClass.ExecuteNonQuery(Comd) > 0);
+                        return (await UtilitiesClass.ExecuteNonQueryAsync(Comd) > 0);
                     }
                 }
             }

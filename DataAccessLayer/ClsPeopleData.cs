@@ -3,19 +3,20 @@ using DTO;
 using System;
 using System.Data;
 using System.Data.SqlClient;
+using System.Threading.Tasks;
 
 namespace DataAccessLayer
 {
     public static class ClsPeopleData
     {
         // Reads a single person's data from a SqlCommand
-        static private PersonDTO ReadPeople(SqlCommand command)
+        static private async Task<PersonDTO> ReadPeopleAsync(SqlCommand command)
         {
             try
             {
-                using (SqlDataReader Reader = command.ExecuteReader())
+                using (SqlDataReader Reader = await command.ExecuteReaderAsync())
                 {
-                    if (Reader.Read())
+                    if (await Reader.ReadAsync())
                     {
                         return new PersonDTO
                         {
@@ -73,7 +74,7 @@ namespace DataAccessLayer
         }
 
         // Retrieves all people with their basic info and nationality
-        static public DataTable GetAllPeople()
+        static public async Task<DataTable> GetAllPeopleAsync()
         {
             string Query = "SELECT PersonID,NationalNo,FirstName,SecondName,ThirdName,LastName,DateOfBirth," +
                            "CASE WHEN Gender = 0 then 'Male' ELSE 'Female' end as Gender,Phone,Email," +
@@ -82,11 +83,11 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
 
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
-                        return UtilitiesClass.ExecuteDataTable(Comd);
+                        return await UtilitiesClass.ExecuteDataTableAsync(Comd);
                     }
                 }
             }
@@ -94,36 +95,36 @@ namespace DataAccessLayer
         }
 
         // Finds a single person by ID
-        static public PersonDTO Find(int ID)
+        static public async Task<PersonDTO> FindAsync(int ID)
         {
             string Query = "SELECT * FROM People where PersonID = @ID";
             try
             {
                 using (SqlConnection Connection = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Connection.Open();
+                    await Connection.OpenAsync();
                     using (SqlCommand Command = new SqlCommand(Query, Connection))
                     {
                         Command.Parameters.Add("@ID", SqlDbType.Int).Value = ID;
-                        return ReadPeople(Command);
+                        return await ReadPeopleAsync(Command);
                     }
                 }
             }
             catch (Exception Ex) { ClsLogger.Log(Ex); return null; }
         }
         // Finds a single person by National No
-        static public PersonDTO Find(string NationalNo)
+        static public async Task<PersonDTO> FindAsync(string NationalNo)
         {
             string Query = "SELECT * FROM People where NationalNo = @NationalNo";
             try
             {
                 using (SqlConnection Connection = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Connection.Open();
+                    await Connection.OpenAsync();
                     using (SqlCommand Command = new SqlCommand(Query, Connection))
                     {
                         Command.Parameters.Add("@NationalNo", SqlDbType.NVarChar).Value = NationalNo;
-                        return ReadPeople(Command);
+                        return await ReadPeopleAsync(Command);
                     }
                 }
             }
@@ -131,7 +132,7 @@ namespace DataAccessLayer
         }
 
         // Inserts a new person and returns the new ID
-        static public int AddNewPerson(PersonDTO NewPerson)
+        static public async Task<int> AddNewPersonAsync(PersonDTO NewPerson)
         {
             string Query = @"INSERT INTO People(NationalNo,FirstName,SecondName,ThirdName,LastName,DateOfBirth, Gender,Address,Phone,Email,NationalityCountryID,ImagePath)
                              VALUES (@NationalNo,@FirstName,@SecondName,@ThirdName,@LastName,@DateOfBirth, @Gender,@Address,@Phone,@Email,@NationalityCountryID,@ImagePath)
@@ -140,12 +141,12 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Connection = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Connection.Open();
+                    await Connection.OpenAsync();
                     using (SqlCommand Command = new SqlCommand(Query, Connection))
                     {
                         SetParameters(Command, NewPerson);
 
-                        return UtilitiesClass.ExecuteScalar(Command);
+                        return await UtilitiesClass.ExecuteScalarAsync(Command);
                     }
                 }
             }
@@ -153,7 +154,7 @@ namespace DataAccessLayer
         }
 
         // Updates an existing person
-        static public bool UpdatePersonInfo(PersonDTO NewPerson)
+        static public async Task<bool> UpdatePersonInfoAsync(PersonDTO NewPerson)
         {
             string Query = @"UPDATE People
                             SET NationalNo=@NationalNo,FirstName=@FirstName,SecondName=@SecondName,
@@ -165,12 +166,12 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Connection = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Connection.Open();
+                    await Connection.OpenAsync();
                     using (SqlCommand Command = new SqlCommand(Query, Connection))
                     {
                         SetParameters(Command, NewPerson);
 
-                        return (UtilitiesClass.ExecuteNonQuery(Command) > 0);
+                        return (await UtilitiesClass.ExecuteNonQueryAsync(Command) > 0);
                     }
                 }
             }
@@ -178,19 +179,19 @@ namespace DataAccessLayer
         }
 
         // Deletes a person by ID
-        public static bool Delete(int PersonID)
+        public static async Task<bool> DeleteAsync(int PersonID)
         {
             string Query = @"Delete from People where PersonID = @PersonID";
             try
             {
                 using (SqlConnection Connection = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Connection.Open();
+                    await Connection.OpenAsync();
                     using (SqlCommand Command = new SqlCommand(Query, Connection))
                     {
                         Command.Parameters.Add("@PersonID", SqlDbType.Int).Value = PersonID;
 
-                        return (UtilitiesClass.ExecuteNonQuery(Command) > 0);
+                        return (await UtilitiesClass.ExecuteNonQueryAsync(Command) > 0);
                     }
                 }
             }
@@ -198,19 +199,19 @@ namespace DataAccessLayer
         }
 
         // Checks if a person exists by NationalNo
-        static public bool PersonExists(string NationalNo)
+        static public async Task<bool> PersonExistsAsync(string NationalNo)
         {
             string Query = @"SELECT COUNT(*) FROM People WHERE NationalNo = @NationalNo";
             try
             {
                 using (SqlConnection Connection = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Connection.Open();
+                    await Connection.OpenAsync();
                     using (SqlCommand Command = new SqlCommand(Query, Connection))
                     {
                         Command.Parameters.AddWithValue("@NationalNo", SqlDbType.NVarChar).Value = NationalNo;
 
-                        return UtilitiesClass.ExecuteScalar(Command) != -1;
+                        return await UtilitiesClass.ExecuteScalarAsync(Command) != -1;
                     }
                 }
             }
@@ -218,19 +219,19 @@ namespace DataAccessLayer
         }
 
         // Checks if a person exists by ID
-        static public bool PersonExists(int ID)
+        static public async Task<bool> PersonExistsAsync(int ID)
         {
             string Query = @"SELECT COUNT(*) FROM People WHERE  PersonID = @ID";
             try
             {
                 using (SqlConnection Connection = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Connection.Open();
+                    await Connection.OpenAsync();
                     using (SqlCommand Command = new SqlCommand(Query, Connection))
                     {
                         Command.Parameters.AddWithValue("@ID", SqlDbType.Int).Value = ID;
 
-                        return UtilitiesClass.ExecuteScalar(Command) != -1;
+                        return await UtilitiesClass.ExecuteScalarAsync(Command) != -1;
                     }
                 }
             }

@@ -1,4 +1,5 @@
 ﻿using BusinessLayer;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace DVLD.License.Local_Licenses.Controls
@@ -10,9 +11,9 @@ namespace DVLD.License.Local_Licenses.Controls
             InitializeComponent();
         }
 
-        public void LoadLicenseInfo(int LicenseID)
+        public async Task LoadLicenseInfoAsync(int LicenseID)
         {
-            ClsLicenses License = ClsLicenses.Find(LicenseID);
+            ClsLicenses License = await ClsLicenses.FindAsync(LicenseID);
 
             if (License != null)
             {

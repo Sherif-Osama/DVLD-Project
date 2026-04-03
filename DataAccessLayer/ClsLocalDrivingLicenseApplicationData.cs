@@ -3,6 +3,7 @@ using DTO;
 using System;
 using System.Data;
 using System.Data.SqlClient;
+using System.Threading.Tasks;
 
 namespace DataAccessLayer
 {
@@ -10,13 +11,13 @@ namespace DataAccessLayer
     public static class ClsLocalDrivingLicenseApplicationData
     {
         // Read a local driving license application from SqlDataReader and return as DTO.
-        private static LocalDrivingLicenseApplicationDTO ReadData(SqlCommand Comd)
+        private static async Task<LocalDrivingLicenseApplicationDTO> ReadDataAsync(SqlCommand Comd)
         {
             try
             {
-                using (SqlDataReader Reader = Comd.ExecuteReader())
+                using (SqlDataReader Reader = await Comd.ExecuteReaderAsync())
                 {
-                    if (Reader.Read())
+                    if (await Reader.ReadAsync())
                     {
                         return new LocalDrivingLicenseApplicationDTO
                         {
@@ -49,7 +50,7 @@ namespace DataAccessLayer
         }
 
         // Get all local driving license applications from the view.
-        public static DataTable GetAllLocalDrivingLicenseApplication()
+        public static async Task<DataTable> GetAllLocalDrivingLicenseApplicationAsync()
         {
             string Query = "SELECT * FROM LocalDrivingLicenseApplications_View";
 
@@ -57,10 +58,10 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
-                        return UtilitiesClass.ExecuteDataTable(Comd);
+                        return await UtilitiesClass.ExecuteDataTableAsync(Comd);
                     }
                 }
             }
@@ -68,7 +69,7 @@ namespace DataAccessLayer
         }
 
         // Check if a person has an active (in-progress) application for the same license class.
-        public static bool HasActiveApplication(int PersonID, int LicenseClassID)
+        public static async Task<bool> HasActiveApplicationAsync(int PersonID, int LicenseClassID)
         {
             string Query = @"SELECT COUNT(*) FROM LocalDrivingLicenseApplications
                             JOIN Applications ON Applications.ApplicationID = LocalDrivingLicenseApplications.ApplicationID 
@@ -77,14 +78,14 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
 
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@PersonID", SqlDbType.Int).Value = PersonID;
                         Comd.Parameters.Add("@LicenseClassID", SqlDbType.Int).Value = LicenseClassID;
 
-                        return UtilitiesClass.ExecuteScalar(Comd) != -1;
+                        return await UtilitiesClass.ExecuteScalarAsync(Comd) != -1;
                     }
                 }
             }
@@ -92,7 +93,7 @@ namespace DataAccessLayer
         }
 
         // Find an application by its ID and return as DTO.
-        public static LocalDrivingLicenseApplicationDTO Find(int LocalDrivingLicenseApplicationID)
+        public static async Task<LocalDrivingLicenseApplicationDTO> FindAsync(int LocalDrivingLicenseApplicationID)
         {
             string Query = @"SELECT * FROM LocalDrivingLicenseFullApplications_View
                              WHERE LocalDrivingLicenseApplicationID = @LocalDrivingLicenseApplicationID";
@@ -100,11 +101,11 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@LocalDrivingLicenseApplicationID", SqlDbType.Int).Value = LocalDrivingLicenseApplicationID;
-                        return ReadData(Comd);
+                        return await ReadDataAsync(Comd);
                     }
                 }
             }
@@ -112,7 +113,7 @@ namespace DataAccessLayer
         }
 
         // Insert a new local driving license application and return the new ID (or -1 on error).
-        public static int AddNew(LocalDrivingLicenseApplicationDTO LocalDrivingLicenseAppLicationDTO)
+        public static async Task<int> AddNewAsync(LocalDrivingLicenseApplicationDTO LocalDrivingLicenseAppLicationDTO)
         {
             string Query = @"INSERT INTO LocalDrivingLicenseApplications (ApplicationID, LicenseClassID)
                              VALUES (@ApplicationID, @LicenseClassID);
@@ -121,11 +122,11 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         AddParameters(Comd, LocalDrivingLicenseAppLicationDTO);
-                        return UtilitiesClass.ExecuteScalar(Comd);
+                        return await UtilitiesClass.ExecuteScalarAsync(Comd);
                     }
                 }
             }
@@ -133,7 +134,7 @@ namespace DataAccessLayer
         }
 
         // Update an existing local driving license application.
-        public static bool Update(LocalDrivingLicenseApplicationDTO LocalDrivingLicenseAppLicationDTO)
+        public static async Task<bool> UpdateAsync(LocalDrivingLicenseApplicationDTO LocalDrivingLicenseAppLicationDTO)
         {
             string Query = @"UPDATE LocalDrivingLicenseApplications
                              SET LicenseClassID = @LicenseClassID
@@ -142,12 +143,12 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         AddParameters(Comd, LocalDrivingLicenseAppLicationDTO);
 
-                        return (UtilitiesClass.ExecuteNonQuery(Comd) > 0);
+                        return (await UtilitiesClass.ExecuteNonQueryAsync(Comd) > 0);
 
                     }
                 }
@@ -155,7 +156,7 @@ namespace DataAccessLayer
             catch (Exception Ex) { ClsLogger.Log(Ex); return false; }
         }
 
-        public static bool Delete(int LocalDrivingLicenseApplicationID)
+        public static async Task<bool> DeleteAsync(int LocalDrivingLicenseApplicationID)
         {
             string Qeury = "DELETE FROM LocalDrivingLicenseApplications WHERE LocalDrivingLicenseApplicationID = @LocalDrivingLicenseApplicationID";
 
@@ -163,11 +164,11 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Qeury, Conn))
                     {
                         Comd.Parameters.Add("@LocalDrivingLicenseApplicationID", SqlDbType.Int).Value = LocalDrivingLicenseApplicationID;
-                        return (UtilitiesClass.ExecuteNonQuery(Comd) > 0);
+                        return (await UtilitiesClass.ExecuteNonQueryAsync(Comd) > 0);
                     }
                 }
             }
@@ -175,7 +176,7 @@ namespace DataAccessLayer
         }
 
         // Find an active application for a person and license class.
-        public static LocalDrivingLicenseApplicationDTO FindActiveApplication(int PersonID, int LicenseClassID)
+        public static async Task<LocalDrivingLicenseApplicationDTO> FindActiveApplicationAsync(int PersonID, int LicenseClassID)
         {
             string Query = @"SELECT * FROM LocalDrivingLicenseApplications
                             JOIN Applications ON Applications.ApplicationID = LocalDrivingLicenseApplications.ApplicationID 
@@ -184,12 +185,12 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@PersonID", SqlDbType.Int).Value = PersonID;
                         Comd.Parameters.Add("@LicenseClassID", SqlDbType.Int).Value = LicenseClassID;
-                        return ReadData(Comd);
+                        return await ReadDataAsync(Comd);
                     }
                 }
             }
@@ -197,7 +198,7 @@ namespace DataAccessLayer
         }
 
         // Count how many times a person has attempted a specific test type.
-        public static byte TestTrialCount(int LocalDrivingLicenseApplicationID, int TestTypeID)
+        public static async Task<byte> TestTrialCountAsync(int LocalDrivingLicenseApplicationID, int TestTypeID)
         {
             string Query = @"SELECT COUNT(*) FROM Tests AS T
                             INNER JOIN TestAppointments AS TA ON TA.TestAppointmentID = T.TestAppointmentID
@@ -206,12 +207,12 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@TestTypeID", SqlDbType.Int).Value = TestTypeID;
                         Comd.Parameters.Add("@LocalDrivingLicenseApplicationID", SqlDbType.Int).Value = LocalDrivingLicenseApplicationID;
-                        int Result = UtilitiesClass.ExecuteScalar(Comd);
+                        int Result = await UtilitiesClass.ExecuteScalarAsync(Comd);
 
                         return Result == -1 ? (byte)0 : (byte)Result;
                     }
@@ -221,7 +222,7 @@ namespace DataAccessLayer
         }
 
         // Check if there is an active (unlocked) appointment for a specific test type.
-        public static bool HasActiveAppointment(int TestTypeID, int LocalDrivingLicenseApplicationID)
+        public static async Task<bool> HasActiveAppointmentAsync(int TestTypeID, int LocalDrivingLicenseApplicationID)
         {
             string Query = @"SELECT COUNT(*) FROM TestAppointments
                             WHERE LocalDrivingLicenseApplicationID = @LocalDrivingLicenseApplicationID AND TestTypeID = @TestTypeID AND IsLocked = 0 ";
@@ -229,13 +230,13 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@TestTypeID", SqlDbType.Int).Value = TestTypeID;
                         Comd.Parameters.Add("@LocalDrivingLicenseApplicationID", SqlDbType.Int).Value = LocalDrivingLicenseApplicationID;
 
-                        return UtilitiesClass.ExecuteScalar(Comd) != -1;
+                        return await UtilitiesClass.ExecuteScalarAsync(Comd) != -1;
                     }
                 }
             }
@@ -243,7 +244,7 @@ namespace DataAccessLayer
         }
 
         // Check if the person has ever taken a specific test type (whether passed or failed).
-        public static bool DoesAttendTestType(int TestTypeID, int LocalDrivingLicenseApplicationID)
+        public static async Task<bool> DoesAttendTestTypeAsync(int TestTypeID, int LocalDrivingLicenseApplicationID)
         {
             string Query = @"SELECT COUNT(*) FROM Tests AS T
                             INNER JOIN TestAppointments AS TA ON TA.TestAppointmentID = T.TestAppointmentID
@@ -252,13 +253,13 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
                         Comd.Parameters.Add("@TestTypeID", SqlDbType.Int).Value = TestTypeID;
                         Comd.Parameters.Add("@LocalDrivingLicenseApplicationID", SqlDbType.Int).Value = LocalDrivingLicenseApplicationID;
 
-                        return UtilitiesClass.ExecuteScalar(Comd) != -1;
+                        return await UtilitiesClass.ExecuteScalarAsync(Comd) != -1;
                     }
                 }
             }

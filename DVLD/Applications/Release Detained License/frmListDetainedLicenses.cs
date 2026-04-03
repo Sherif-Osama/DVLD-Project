@@ -3,6 +3,7 @@ using DVLD.Global_classes;
 using DVLD.License;
 using DVLD.License.Detain_License;
 using DVLD.People;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 namespace DVLD.Applications.Release_Detained_License
 {
@@ -13,9 +14,9 @@ namespace DVLD.Applications.Release_Detained_License
             InitializeComponent();
         }
 
-        private void LoadDGVInfo()
+        private async Task LoadDGVInfo()
         {
-            dgvDetainedLicenses.DataSource = ClsDetainedLicenses.GetAllDetainedLicenses();
+            dgvDetainedLicenses.DataSource = await ClsDetainedLicenses.GetAllDetainedLicensesAsync();
 
             int RowNum = dgvDetainedLicenses.Rows.Count;
 
@@ -54,9 +55,9 @@ namespace DVLD.Applications.Release_Detained_License
 
         private void LoadFilter() => filterBy1.LoadColumn(dgvDetainedLicenses);
 
-        private void ListDetainedLicenses_Load(object sender, System.EventArgs e)
+        private async void ListDetainedLicenses_Load(object sender, System.EventArgs e)
         {
-            LoadDGVInfo();
+            await LoadDGVInfo();
             LoadFilter();
         }
 
@@ -66,27 +67,27 @@ namespace DVLD.Applications.Release_Detained_License
             lblTotalRecords.Text = e.FoundRows.ToString();
         }
 
-        private void btnReleaseDetainedLicense_Click(object sender, System.EventArgs e)
+        private async void btnReleaseDetainedLicense_Click(object sender, System.EventArgs e)
         {
             ReleaseDetainedLicensecs ReleaseDetainedLicensecs = new ReleaseDetainedLicensecs();
             ReleaseDetainedLicensecs.ShowDialog();
-            LoadDGVInfo();
+            await LoadDGVInfo();
             LoadFilter();
         }
 
-        private void btnDetainLicense_Click(object sender, System.EventArgs e)
+        private async void btnDetainLicense_Click(object sender, System.EventArgs e)
         {
             DetainLicense DetainLicense = new DetainLicense();
             DetainLicense.ShowDialog();
-            LoadDGVInfo();
+            await LoadDGVInfo();
             LoadFilter();
         }
 
         private void btnClose_Click(object sender, System.EventArgs e) => this.Close();
 
-        private void PesonDetailsToolStripMenuItem_Click(object sender, System.EventArgs e)
+        private async void PesonDetailsToolStripMenuItem_Click(object sender, System.EventArgs e)
         {
-            if (ClsPerson.Find(dgvDetainedLicenses?.CurrentRow?.Cells[6].Value.ToString()) is ClsPerson Person)
+            if (await ClsPerson.FindAsync(dgvDetainedLicenses?.CurrentRow?.Cells[6].Value.ToString()) is ClsPerson Person)
             {
                 PersonDetails PersonDetails = new PersonDetails(Person.PersonID);
                 PersonDetails.ShowDialog();
@@ -110,9 +111,9 @@ namespace DVLD.Applications.Release_Detained_License
             }
         }
 
-        private void showPersonLicenseHistoryToolStripMenuItem_Click(object sender, System.EventArgs e)
+        private async void showPersonLicenseHistoryToolStripMenuItem_Click(object sender, System.EventArgs e)
         {
-            if (ClsPerson.Find(dgvDetainedLicenses?.CurrentRow?.Cells[6].Value.ToString()) is ClsPerson Person)
+            if (await ClsPerson.FindAsync(dgvDetainedLicenses?.CurrentRow?.Cells[6].Value.ToString()) is ClsPerson Person)
             {
                 ShowPersonLicenseHistory PersonLicenseHistory = new ShowPersonLicenseHistory(Person.PersonID);
                 PersonLicenseHistory.ShowDialog();
@@ -123,13 +124,13 @@ namespace DVLD.Applications.Release_Detained_License
             }
         }
 
-        private void releaseDetainedLicenseToolStripMenuItem_Click(object sender, System.EventArgs e)
+        private async void releaseDetainedLicenseToolStripMenuItem_Click(object sender, System.EventArgs e)
         {
             if (int.TryParse(dgvDetainedLicenses.CurrentRow.Cells[1].Value.ToString(), out int LicenseID))
             {
                 ReleaseDetainedLicensecs ReleaseDetainedLicensecs = new ReleaseDetainedLicensecs(LicenseID);
                 ReleaseDetainedLicensecs.ShowDialog();
-                LoadDGVInfo();
+                await LoadDGVInfo();
                 LoadFilter();
             }
             else

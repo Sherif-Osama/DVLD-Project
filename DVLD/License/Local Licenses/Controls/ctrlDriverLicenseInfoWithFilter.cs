@@ -1,5 +1,6 @@
 ﻿using BusinessLayer;
 using System;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace DVLD.License.Local_Licenses.Controls
@@ -28,23 +29,23 @@ namespace DVLD.License.Local_Licenses.Controls
 
         public ctrlDriverLicenseInfoWithFilter() => InitializeComponent();
 
-        public void LoadLicenseInfo(int LicenseID)
+        public async Task LoadLicenseInfoAsync(int LicenseID)
         {
-            ctrlDriverLicenseInfo1.LoadLicenseInfo(LicenseID);
+            await ctrlDriverLicenseInfo1.LoadLicenseInfoAsync(LicenseID);
             Filtertext.Text = LicenseID.ToString();
             Filtertext.Enabled = false;
         }
 
         // Try to parse the text box as an integer license ID and load license info.
-        private void SearchLicense()
+        private async Task SearchLicenseAsync()
         {
             if (int.TryParse(Filtertext.Text, out int LicenseID))
             {
                 // Look up license by ID
-                if (ClsLicenses.Find(LicenseID) is ClsLicenses License)
+                if (await ClsLicenses.FindAsync(LicenseID) is ClsLicenses License)
                 {
                     // Load license details into the child control and notify listeners.
-                    ctrlDriverLicenseInfo1.LoadLicenseInfo(License.LicenseID);
+                    await ctrlDriverLicenseInfo1.LoadLicenseInfoAsync(License.LicenseID);
 
                     OnLicenseSearchCompleted(true, License.LicenseID);
                 }
@@ -56,9 +57,9 @@ namespace DVLD.License.Local_Licenses.Controls
         }
 
         // Handler for the Find button: validate input then run search.
-        private void btnFind_Click(object sender, EventArgs e)
+        private async void btnFind_Click(object sender, EventArgs e)
         {
-            if (!string.IsNullOrWhiteSpace(Filtertext.Text)) { SearchLicense(); }
+            if (!string.IsNullOrWhiteSpace(Filtertext.Text)) { await SearchLicenseAsync(); }
             // Show error if the field is empty
             else { errorProvider1.SetError(Filtertext, "This field is required!"); }
         }

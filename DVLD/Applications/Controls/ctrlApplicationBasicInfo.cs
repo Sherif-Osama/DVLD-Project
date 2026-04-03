@@ -1,5 +1,6 @@
 ﻿using BusinessLayer;
 using DVLD.People;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace DVLD.Applications.Controls
@@ -16,12 +17,11 @@ namespace DVLD.Applications.Controls
         }
 
         // Load application data by ID and populate UI labels with simple formatted values.
-        public void SetApplicationBasicInfo(int ApplicationID)
+        public async Task SetApplicationBasicInfoAsync(int ApplicationID)
         {
-            LocalDrivingLicenseApplicationInfo = ClsLocalDrivingLicenseApplication.Find(ApplicationID);
+            LocalDrivingLicenseApplicationInfo = await ClsLocalDrivingLicenseApplication.FindAsync(ApplicationID);
             if (LocalDrivingLicenseApplicationInfo != null)
             {
-
                 lblApplicationID.Text = LocalDrivingLicenseApplicationInfo.ApplicationID.ToString();
                 lblStatus.Text = LocalDrivingLicenseApplicationInfo.StatusText;
                 lblFees.Text = LocalDrivingLicenseApplicationInfo.PaidFees.ToString();

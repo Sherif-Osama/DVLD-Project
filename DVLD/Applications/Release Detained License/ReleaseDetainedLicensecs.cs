@@ -3,6 +3,7 @@ using DVLD.Global_classes;
 using DVLD.License;
 using DVLD.License.Local_Licenses.Controls;
 using System;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace DVLD.Applications.Release_Detained_License
@@ -10,30 +11,38 @@ namespace DVLD.Applications.Release_Detained_License
     public partial class ReleaseDetainedLicensecs : Form
     {
         ClsLicenses CurrentLicense;
+        private int LicenseID;
 
         public ReleaseDetainedLicensecs()
         {
             InitializeComponent();
         }
 
-        public ReleaseDetainedLicensecs(int LiceseID)
+        public ReleaseDetainedLicensecs(int LicenseID)
         {
             InitializeComponent();
-            ctrlDriverLicenseInfoWithFilter1.LoadLicenseInfo(LiceseID);
-            CurrentLicense = ClsLicenses.Find(LiceseID);
-            LoadApplicationData();
+            this.LicenseID = LicenseID;
+            LoadLicenseInfo();
         }
 
-        private void ReleaseDetainedLicensecs_Load(object sender, EventArgs e)
+        private async void LoadLicenseInfo()
+        {
+            await ctrlDriverLicenseInfoWithFilter1.LoadLicenseInfoAsync(LicenseID);
+        }
+
+        private async void ReleaseDetainedLicensecs_Load(object sender, EventArgs e)
         {
             lblCreatedByUser.Text = ClsGlobal.CurrentUser.UserName;
+
+            CurrentLicense = await ClsLicenses.FindAsync(LicenseID);
+            await LoadApplicationDataAsync();
         }
 
-        private void LoadApplicationData()
+        private async Task LoadApplicationDataAsync()
         {
             if (CurrentLicense != null)
             {
-                ClsDetainedLicenses DetainedLicense = ClsDetainedLicenses.FindByLicenseID(CurrentLicense.LicenseID);
+                ClsDetainedLicenses DetainedLicense = await ClsDetainedLicenses.FindByLicenseIDAsync(CurrentLicense.LicenseID);
 
                 if (DetainedLicense != null)
                 {
@@ -44,20 +53,20 @@ namespace DVLD.Applications.Release_Detained_License
                     lblLicenseID.Text = DetainedLicense.LicenseID.ToString();
                     lblFineFees.Text = DetainedLicense.FineFees.ToString();
                     lblDetainDate.Text = DetainedLicense.DetainDate.ToString("dd/MMM/yyyy");
-                    lblApplicationFees.Text = ClsApplicationsTypes.Find((int)ClsApplications.EnApplicationType.ReleaseDetainedDrivingLicense)?.Fees.ToString() ?? "Unknown";
-                    lblTotalFees.Text = (DetainedLicense.FineFees + ClsApplicationsTypes.Find((int)ClsApplications.EnApplicationType.ReleaseDetainedDrivingLicense)?.Fees).ToString();
+                    lblApplicationFees.Text = (await ClsApplicationsTypes.FindAsync((int)ClsApplications.EnApplicationType.ReleaseDetainedDrivingLicense))?.Fees.ToString() ?? "Unknown";
+                    lblTotalFees.Text = (DetainedLicense.FineFees + (await ClsApplicationsTypes.FindAsync((int)ClsApplications.EnApplicationType.ReleaseDetainedDrivingLicense))?.Fees ?? 0).ToString();
                 }
             }
         }
 
-        private void btnRelease_Click(object sender, EventArgs e)
+        private async void btnRelease_Click(object sender, EventArgs e)
         {
             if (MessageBox.Show("Are you sure you want to release this detained  license?", "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
             {
-                if (CurrentLicense.Release(ClsGlobal.CurrentUser.UserID))
+                if (await CurrentLicense.ReleaseAsync(ClsGlobal.CurrentUser.UserID))
                 {
                     btnRelease.Enabled = false;
-                    lblApplicationID.Text = ClsDetainedLicenses.FindByLicenseID(CurrentLicense.LicenseID)?.ReleaseApplicationID.ToString() ?? "Unknown";
+                    lblApplicationID.Text = (await ClsDetainedLicenses.FindByLicenseIDAsync(CurrentLicense.LicenseID))?.ReleaseApplicationID.ToString() ?? "Unknown";
                     MessageBox.Show("Detained License released Successfully ", "Detained License Released", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 else
@@ -78,11 +87,11 @@ namespace DVLD.Applications.Release_Detained_License
             }
         }
 
-        private void llShowLicenseHistory_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        private async void llShowLicenseHistory_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
             if (CurrentLicense != null)
             {
-                ClsDriver Driver = ClsDriver.Find(CurrentLicense.DriverID);
+                ClsDriver Driver = await ClsDriver.FindAsync(CurrentLicense.DriverID);
 
                 if (Driver != null)
                 {
@@ -92,17 +101,16 @@ namespace DVLD.Applications.Release_Detained_License
             }
         }
 
-        private void ctrlDriverLicenseInfoWithFilter1_LicenseSearchCompleted(object sender, ctrlDriverLicenseInfoWithFilter.FilterResult e)
+        private async void ctrlDriverLicenseInfoWithFilter1_LicenseSearchCompleted(object sender, ctrlDriverLicenseInfoWithFilter.FilterResult e)
         {
             if (e.IsFound)
             {
-                CurrentLicense = ClsLicenses.Find(e.LicenseID);
-
+                CurrentLicense = await ClsLicenses.FindAsync(e.LicenseID);
                 if (CurrentLicense != null)
                 {
                     if (CurrentLicense.IsDetained)
                     {
-                        LoadApplicationData();
+                        await LoadApplicationDataAsync();
                     }
                     else
                     {

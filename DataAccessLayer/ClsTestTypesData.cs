@@ -3,19 +3,20 @@ using DTO;
 using System;
 using System.Data;
 using System.Data.SqlClient;
+using System.Threading.Tasks;
 
 namespace DataAccessLayer
 {
     public static class ClsTestTypesData
     {
         // Reads a single TestType record from the database and converts it to a DTO object
-        private static TestTypesDTO ReadTestType(SqlCommand Comd)
+        private static async Task<TestTypesDTO> ReadTestTypeAsync(SqlCommand Comd)
         {
             try
             {
-                using (SqlDataReader Reader = Comd.ExecuteReader())
+                using (SqlDataReader Reader = await Comd.ExecuteReaderAsync())
                 {
-                    if (Reader.Read())
+                    if (await Reader.ReadAsync())
                     {
                         return new TestTypesDTO
                         {
@@ -46,17 +47,17 @@ namespace DataAccessLayer
         }
 
         // Retrieves all test types from the database
-        public static DataTable GetAllTestType()
+        public static async Task<DataTable> GetAllTestTypeAsync()
         {
             string Query = "SELECT * FROM TestTypes";
             try
             {
                 using (SqlConnection Conn = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Conn.Open();
+                    await Conn.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Conn))
                     {
-                        return UtilitiesClass.ExecuteDataTable(Comd);
+                        return await UtilitiesClass.ExecuteDataTableAsync(Comd);
                     }
                 }
             }
@@ -64,18 +65,18 @@ namespace DataAccessLayer
         }
 
         // Finds a test type by its ID
-        public static TestTypesDTO Find(int TestTypeID)
+        public static async Task<TestTypesDTO> FindAsync(int TestTypeID)
         {
             string Query = "SELECT * FROM TestTypes WHERE TestTypeID = @TestTypeID";
             try
             {
                 using (SqlConnection Connection = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Connection.Open();
+                    await Connection.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Connection))
                     {
                         Comd.Parameters.Add("@TestTypeID", SqlDbType.Int).Value = TestTypeID;
-                        return ReadTestType(Comd);
+                        return await ReadTestTypeAsync(Comd);
                     }
                 }
             }
@@ -83,18 +84,18 @@ namespace DataAccessLayer
         }
 
         // Finds a test type by its title
-        public static TestTypesDTO Find(string TestTypeTitle)
+        public static async Task<TestTypesDTO> FindAsync(string TestTypeTitle)
         {
             string Query = "SELECT * FROM TestTypes WHERE TestTypeTitle = @TestTypeTitle";
             try
             {
                 using (SqlConnection Connection = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Connection.Open();
+                    await Connection.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Connection))
                     {
                         Comd.Parameters.Add("@TestTypeTitle", SqlDbType.NVarChar).Value = TestTypeTitle;
-                        return ReadTestType(Comd);
+                        return await ReadTestTypeAsync(Comd);
                     }
                 }
             }
@@ -102,7 +103,7 @@ namespace DataAccessLayer
         }
 
         // Updates an existing test type record in the database
-        public static bool Update(TestTypesDTO TestType)
+        public static async Task<bool> UpdateAsync(TestTypesDTO TestType)
         {
             string Query = @"UPDATE TestTypes
                             SET 
@@ -114,12 +115,12 @@ namespace DataAccessLayer
             {
                 using (SqlConnection Connection = new SqlConnection(DataAccessSettings.ConnectionString))
                 {
-                    Connection.Open();
+                    await Connection.OpenAsync();
                     using (SqlCommand Comd = new SqlCommand(Query, Connection))
                     {
                         SetParameters(Comd, TestType);
 
-                        return (UtilitiesClass.ExecuteNonQuery(Comd) > 0);
+                        return (await UtilitiesClass.ExecuteNonQueryAsync(Comd) > 0);
                     }
                 }
             }

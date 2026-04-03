@@ -1,6 +1,7 @@
 ﻿using DataAccessLayer;
 using DTO;
 using System.Data;
+using System.Threading.Tasks;
 
 namespace BusinessLayer
 {
@@ -29,7 +30,6 @@ namespace BusinessLayer
         {
             UserID = UserDTO.UserID;
             PersonID = UserDTO.PersonID;
-            PersonInfo = ClsPerson.Find(UserDTO.PersonID);
             UserName = UserDTO.UserName;
             Password = UserDTO.Password;
             IsActive = UserDTO.IsActive;
@@ -51,116 +51,136 @@ namespace BusinessLayer
         }
 
         // Retrieve all users as a DataTable
-        static public DataTable GetAllUsersData() => ClsUserData.GetAllUsersData();
+        static public Task<DataTable> GetAllUsersDataAsync() => ClsUserData.GetAllUsersDataAsync();
 
         #region check User Methods
         // Check if a user exists with a given username and password
-        static public bool UserExists(string UserName, string Password)
+        static public async Task<bool> UserExistsAsync(string UserName, string Password)
         {
             if (!string.IsNullOrWhiteSpace(UserName) && !string.IsNullOrWhiteSpace(Password))
             {
-                UserDTO User = ClsUserData.Find(UserName, Password);
-
+                UserDTO User = await ClsUserData.FindAsync(UserName, Password);
                 return (User != null && User.IsActive); // Also ensure the user is active
             }
+
             return false;
         }
 
         // Check if a username already exists
-        static public bool UserExists(string UserName) => ClsUserData.UserExists(UserName);
+        static public Task<bool> UserExistsAsync(string UserName) => ClsUserData.UserExistsAsync(UserName);
 
         // Check if a person ID is linked to a user
-        static public bool IsUser(int PersonID) => ClsUserData.IsUser(PersonID);
+        static public Task<bool> IsUserAsync(int PersonID) => ClsUserData.IsUserAsync(PersonID);
         #endregion
 
         #region Find Methods
-        // Find user by PersonID
-        public static ClsUser FindUserByPersonID(int PersonID)
+
+        private async Task LoadRelatedDataAsync()
         {
-            UserDTO UserDTO = ClsUserData.FindUserByPersonID(PersonID);
+            this.PersonInfo = await ClsPerson.FindAsync(this.PersonID);
+        }
+
+        // Find user by PersonID
+        public static async Task<ClsUser> FindUserByPersonIDAsync(int PersonID)
+        {
+            UserDTO UserDTO = await ClsUserData.FindUserByPersonIDAsync(PersonID);
 
             if (UserDTO == null) return null; // Return null if not found
 
-            return new ClsUser(UserDTO);
+            ClsUser UserObj = new ClsUser(UserDTO);
+
+            await UserObj.LoadRelatedDataAsync();
+
+            return UserObj;
         }
 
         // Find user by username and password
-        public static ClsUser Find(string UserName, string Password)
+        public static async Task<ClsUser> FindAsync(string UserName, string Password)
         {
             Password = HashHelper.ComputeHashing(Password);
 
-            UserDTO UserDTO = ClsUserData.Find(UserName, Password);
-
+            UserDTO UserDTO = await ClsUserData.FindAsync(UserName, Password);
             if (UserDTO == null) return null; // Return null if not found
 
-            return new ClsUser(UserDTO);
+            ClsUser UserObj = new ClsUser(UserDTO);
+
+            await UserObj.LoadRelatedDataAsync();
+
+            return UserObj;
         }
 
         // Find user by username only
-        public static ClsUser Find(string UserName)
+        public static async Task<ClsUser> FindAsync(string UserName)
         {
-            UserDTO UserDTO = ClsUserData.Find(UserName);
+            UserDTO UserDTO = await ClsUserData.FindAsync(UserName);
 
             if (UserDTO == null) return null; // Return null if not found
 
-            return new ClsUser(UserDTO);
+            ClsUser UserObj = new ClsUser(UserDTO);
+
+            await UserObj.LoadRelatedDataAsync();
+
+            return UserObj;
         }
 
         // Find user by user ID
-        public static ClsUser Find(int UserID)
+        public static async Task<ClsUser> FindAsync(int UserID)
         {
-            UserDTO UserDTO = ClsUserData.Find(UserID);
+            UserDTO UserDTO = await ClsUserData.FindAsync(UserID);
 
             if (UserDTO == null) return null; // Return null if not found
 
-            return new ClsUser(UserDTO);
+            ClsUser UserObj = new ClsUser(UserDTO);
+
+            await UserObj.LoadRelatedDataAsync();
+
+            return UserObj;
         }
         #endregion
 
         #region Add/Update/Delete Methods
         // Delete user by ID
-        static public bool Delete(int UserID) => ClsUserData.DeleteUser(UserID);
+        static public Task<bool> DeleteAsync(int UserID) => ClsUserData.DeleteUserAsync(UserID);
 
         // Add a new user
-        private bool AddNewUser()
+        private async Task<bool> AddNewUserAsync()
         {
             this.Password = HashHelper.ComputeHashing(this.Password);
-            UserID = ClsUserData.AddNewUser(MappingToDTO());
+            UserID = await ClsUserData.AddNewUserAsync(MappingToDTO());
 
             return (UserID != -1); // Return true if added successfully
         }
 
         // Update an existing user
-        private bool UpdateUser() => ClsUserData.UpdateUser(MappingToDTO());
+        private Task<bool> UpdateUserAsync() => ClsUserData.UpdateUserAsync(MappingToDTO());
 
 
-        private bool BusinessRules()
+        private async Task<bool> BusinessRules()
         {
             if (this.Mode == EnMode.AddNew)
             {
-                return (!IsUser(this.PersonID) && !UserExists(this.UserName));
+                return (!await IsUserAsync(this.PersonID) && !await UserExistsAsync(this.UserName));
             }
             else if (this.Mode == EnMode.Update)
             {
-                ClsUser OtherUserWithSameName = Find(this.UserName);
-
+                ClsUser OtherUserWithSameName = await FindAsync(this.UserName);
                 return (OtherUserWithSameName == null || this.UserID == OtherUserWithSameName.UserID);
             }
             return false;
         }
 
         // Save user (AddNew or Update based on Mode)
-        public bool Save()
+        public async Task<bool> SaveAsync()
         {
-            if (BusinessRules())
+            if (await BusinessRules())
             {
                 switch (this.Mode)
                 {
                     case EnMode.AddNew:
-                        if (AddNewUser()) { Mode = EnMode.Update; return true; }
+                        if (await AddNewUserAsync()) { Mode = EnMode.Update; return true; }
                         return false;
                     case EnMode.Update:
-                        return UpdateUser();
+                        return await UpdateUserAsync();
                     default:
                         return false;
                 }
@@ -168,13 +188,13 @@ namespace BusinessLayer
             return false;
         }
 
-        public bool ChangePassword(string NewPassWord)
+        public async Task<bool> ChangePasswordAsync(string NewPassWord)
         {
             NewPassWord = HashHelper.ComputeHashing(NewPassWord);
 
             if (NewPassWord != this.Password)
             {
-                if (ClsUserData.ChangePassword(this.UserID, NewPassWord))
+                if (await ClsUserData.ChangePasswordAsync(this.UserID, NewPassWord))
                 { this.Password = NewPassWord; return true; }
                 else
                 { return false; }

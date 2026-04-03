@@ -13,7 +13,7 @@ namespace DVLD.License.International_License
             this.LicenseID = LicenseID;
         }
 
-        private void ctrlDriverInternationalLicenseInfo1_Load(object sender, EventArgs e) => ctrlDriverInternationalLicenseInfo1.LoadInternationalLicenseInfo(LicenseID);
+        private async void ctrlDriverInternationalLicenseInfo1_Load(object sender, EventArgs e) => await ctrlDriverInternationalLicenseInfo1.LoadInternationalLicenseInfoAsync(LicenseID);
 
         private void btnClose_Click(object sender, EventArgs e) => this.Close();
     }

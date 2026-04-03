@@ -1,5 +1,6 @@
 ﻿using BusinessLayer;
 using System;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace DVLD.Controls
@@ -35,9 +36,9 @@ namespace DVLD.Controls
             FilterBox.SelectedIndex = 0; // Default selection
         }
 
-        public void LoadPerson(int PersonID)
+        public async Task LoadPersonAsync(int PersonID)
         {
-            ctrlPersonCard1.LoadPerson(PersonID);
+            await ctrlPersonCard1.LoadPersonAsync(PersonID);
             Filtertext.Text = PersonID.ToString();
             groupBox1.Enabled = false;
         }
@@ -79,7 +80,7 @@ namespace DVLD.Controls
         }
 
         // Main method to perform the search logic
-        private void SearchPerson()
+        private async Task SearchPerson()
         {
             switch (FilterBox.SelectedItem.ToString())
             {
@@ -87,10 +88,10 @@ namespace DVLD.Controls
                 case "Person ID":
                     if (int.TryParse(Filtertext.Text, out int PersonID))
                     {
-                        if (ClsPerson.PersonExists(PersonID))
+                        if (await ClsPerson.PersonExistsAsync(PersonID))
                         {
                             // Load the found person into the card
-                            ctrlPersonCard1.LoadPerson(PersonID);
+                            await ctrlPersonCard1.LoadPersonAsync(PersonID);
                             OnPersonSearchCompleted(PersonID, true);
                         }
                         else
@@ -106,12 +107,12 @@ namespace DVLD.Controls
                     if (!string.IsNullOrWhiteSpace(Filtertext.Text))
                     {
                         // Find the person by national number
-                        ClsPerson personInfo = ClsPerson.Find(Filtertext.Text);
+                        ClsPerson personInfo = await ClsPerson.FindAsync(Filtertext.Text);
 
                         if (personInfo != null)
                         {
                             // Load the found person into the card
-                            ctrlPersonCard1.LoadPerson(personInfo.PersonID);
+                            await ctrlPersonCard1.LoadPersonAsync(personInfo.PersonID);
                             OnPersonSearchCompleted(personInfo.PersonID, true);
                         }
                         else
@@ -124,10 +125,10 @@ namespace DVLD.Controls
         }
 
         // Called when the Search button is clicked
-        private void Searchbutton_Click(object sender, EventArgs e)
+        private async void Searchbutton_Click(object sender, EventArgs e)
         {
             if (!string.IsNullOrWhiteSpace(Filtertext.Text))
-            { SearchPerson(); }
+            { await SearchPerson(); }
             else
             { errorProvider1.SetError(Filtertext, "This field is required!"); }
         }

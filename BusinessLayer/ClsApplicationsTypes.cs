@@ -1,6 +1,7 @@
 ﻿using DataAccessLayer;
 using DTO;
 using System.Data;
+using System.Threading.Tasks;
 
 namespace BusinessLayer
 {
@@ -39,12 +40,12 @@ namespace BusinessLayer
             };
         }
         // Retrieves all application types from the database
-        public static DataTable GetAllApplicationsTypes() => ClsApplicationsTypesData.GetAllApplicationsTypes();
+        public static Task<DataTable> GetAllApplicationsTypesAsync() => ClsApplicationsTypesData.GetAllApplicationsTypesAsync();
         #region Find Methods
         // Finds an application type by ID
-        public static ClsApplicationsTypes Find(int ApplicationTypeID)
+        public static async Task<ClsApplicationsTypes> FindAsync(int ApplicationTypeID)
         {
-            ApplicationTypesDTO ApplicationData = ClsApplicationsTypesData.Find(ApplicationTypeID);
+            ApplicationTypesDTO ApplicationData = await ClsApplicationsTypesData.FindAsync(ApplicationTypeID);
 
             if (ApplicationData == null) return null;
 
@@ -52,9 +53,9 @@ namespace BusinessLayer
         }
 
         // Finds an application type by title
-        public static ClsApplicationsTypes Find(string ApplicationTitle)
+        public static async Task<ClsApplicationsTypes> FindAsync(string ApplicationTitle)
         {
-            ApplicationTypesDTO ApplicationData = ClsApplicationsTypesData.Find(ApplicationTitle);
+            ApplicationTypesDTO ApplicationData = await ClsApplicationsTypesData.FindAsync(ApplicationTitle);
 
             if (ApplicationData == null) return null;
 
@@ -63,16 +64,16 @@ namespace BusinessLayer
         #endregion
         #region Update/Save Methods
         // Updates the current application type in the database
-        public bool UpdateApplicationsTypes() => ClsApplicationsTypesData.UpdateApplicationsTypes(MappingToDTO());
+        public Task<bool> UpdateApplicationsTypesAsync() => ClsApplicationsTypesData.UpdateApplicationsTypesAsync(MappingToDTO());
 
         // Saves the current object (updates if exists, prevents duplicates)
-        public bool Save()
+        public async Task<bool> SaveAsync()
         {
-            ClsApplicationsTypes ApplicationData = Find(this.Title);
+            ClsApplicationsTypes ApplicationData = await FindAsync(this.Title);
 
             if (ApplicationData == null || this.ID == ApplicationData.ID)
             {
-                return this.UpdateApplicationsTypes();
+                return await this.UpdateApplicationsTypesAsync();
             }
 
             // Return false if another record with the same title exists

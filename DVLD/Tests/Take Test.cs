@@ -8,12 +8,22 @@ namespace DVLD.Tests
     {
         ClsTestAppointments Appointment;
         ClsTest Test;
+        private int AppointmentID;
 
-        public TakeTest(int ApplicationID, int AppointmentID, ClsTestTypes.EnTestType Type)
+        public TakeTest(int AppointmentID)
         {
             InitializeComponent();
-            ctrlSecheduledTest1.Initionlaze(ApplicationID, AppointmentID, Type);
-            Appointment = ClsTestAppointments.Find(AppointmentID);
+            this.AppointmentID = AppointmentID;
+        }
+
+        private async void TakeTest_Load(object sender, System.EventArgs e)
+        {
+            Appointment = await ClsTestAppointments.FindAsync(AppointmentID);
+
+            if (Appointment != null)
+            {
+                await ctrlSecheduledTest1.Initialize(Appointment.LocalDrivingLicenseApplicationID, Appointment.TestAppointmentID, (ClsTestTypes.EnTestType)Appointment.TestTypeID);
+            }
         }
 
         private void SetTestInfo()
@@ -24,7 +34,7 @@ namespace DVLD.Tests
                 Test.CreatedByUserID = ClsGlobal.CurrentUser.UserID;
                 Test.Notes = txtNotes.Text.Trim();
                 Test.TestAppointmentID = Appointment?.TestAppointmentID ?? -1;
-                Test.TestResult = rbPass.Checked ? true : false;
+                Test.TestResult = rbPass.Checked;
             }
             else
             {
@@ -33,7 +43,7 @@ namespace DVLD.Tests
             }
         }
 
-        private void btnSave_Click(object sender, System.EventArgs e)
+        private async void btnSave_Click(object sender, System.EventArgs e)
         {
             if (MessageBox.Show("Are you sure you want to save? After that you cannot change the Pass/Fail results after you save?.", "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.No)
             {
@@ -42,7 +52,7 @@ namespace DVLD.Tests
 
             SetTestInfo();
 
-            if (Test.Save())
+            if (await Test.SaveAsync())
             {
                 MessageBox.Show("Data Saved Successfully.", "Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 btnSave.Enabled = false;

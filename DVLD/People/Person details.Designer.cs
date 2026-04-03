@@ -81,6 +81,7 @@
             this.Name = "PersonDetails";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "PersonDetails";
+            this.Load += new System.EventHandler(this.PersonDetails_Load);
             this.ResumeLayout(false);
             this.PerformLayout();
 

@@ -1,5 +1,6 @@
 ﻿using BusinessLayer;
 using DVLD.Properties;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace DVLD.Tests.Controls
@@ -15,18 +16,18 @@ namespace DVLD.Tests.Controls
             InitializeComponent();
         }
 
-        public void Initionlaze(int LocalDrivingLicenseAppID, int AppointmentID, ClsTestTypes.EnTestType Type)
+        public async Task Initialize(int LocalDrivingLicenseAppID, int AppointmentID, ClsTestTypes.EnTestType Type)
         {
             this.ApplicationID = LocalDrivingLicenseAppID;
             this.Type = Type;
 
-            AppointmentsInfo = ClsTestAppointments.Find(AppointmentID);
-            Application = ClsLocalDrivingLicenseApplication.Find(LocalDrivingLicenseAppID);
-            SetDada();
+            AppointmentsInfo = await ClsTestAppointments.FindAsync(AppointmentID);
+            Application = await ClsLocalDrivingLicenseApplication.FindAsync(LocalDrivingLicenseAppID);
+            await SetData();
         }
 
         #region Load UI Image & Title Data
-        private void SetDada()
+        private async Task SetData()
         {
             LoadUIData();
             if (AppointmentsInfo != null && Application != null)
@@ -34,9 +35,10 @@ namespace DVLD.Tests.Controls
                 lblLocalDrivingLicenseAppID.Text = this.ApplicationID.ToString();
                 lblDrivingClass.Text = Application?.LicenseClassInfo?.ClassName ?? "Unknown";
                 lblFullName.Text = Application?.ApplicantPersonInfo?.FullName ?? "UnKnown";
-                lblTrial.Text = Application?.TestTrialCount((int)Type).ToString() ?? "UnKnown";
+                lblTrial.Text = (await Application?.TestTrialCountAsync((int)Type)).ToString() ?? "UnKnown";
                 lblDate.Text = Application.ApplicationDate.ToString("dd/MM/yyyy");
-                lblFees.Text = ClsTestTypes.Find((int)Type)?.Fees.ToString() ?? "UnKnown";
+                ClsTestTypes TestType = await ClsTestTypes.FindAsync((int)Type);
+                lblFees.Text = TestType?.Fees.ToString() ?? "UnKnown";
                 lblTestID.Text = "Not taken yet";
             }
         }

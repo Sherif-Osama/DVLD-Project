@@ -1,6 +1,7 @@
 ﻿using BusinessLayer;
 using DVLD.Tests.Test_Types;
 using System;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace DVLD.Tests
@@ -14,9 +15,9 @@ namespace DVLD.Tests
         }
 
         // Loads all test types from the database into the DataGridView
-        private void LoadDataGridView()
+        private async Task LoadDataGridView()
         {
-            dgvTestTypes.DataSource = ClsTestTypes.GetAllTestType();
+            dgvTestTypes.DataSource = await ClsTestTypes.GetAllTestTypeAsync();
 
             int NumberOfRows = dgvTestTypes.Rows.Count;
             lblRecordsCount.Text = NumberOfRows.ToString(); // Show total number of records
@@ -39,13 +40,13 @@ namespace DVLD.Tests
         }
 
         // Triggered when the form is loaded — populates the DataGridView
-        private void ListTestTypes_Load(object sender, EventArgs e) => LoadDataGridView();
+        private async void ListTestTypes_Load(object sender, EventArgs e) => await LoadDataGridView();
 
         // Closes the form when the Close button is clicked
         private void btnClose_Click(object sender, EventArgs e) => this.Close();
 
         // Triggered when the user selects "Edit" from the context menu
-        private void editToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void editToolStripMenuItem_Click(object sender, EventArgs e)
         {
             // Get the selected Test Type ID from the DataGridView
             if (int.TryParse(dgvTestTypes.CurrentRow.Cells[0].Value.ToString(), out int TestTypeID))
@@ -55,7 +56,7 @@ namespace DVLD.Tests
                 Edit.ShowDialog();
 
                 // Refresh the DataGridView after editing
-                LoadDataGridView();
+                await LoadDataGridView();
             }
         }
     }

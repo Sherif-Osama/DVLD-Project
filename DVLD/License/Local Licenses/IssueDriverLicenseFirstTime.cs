@@ -35,6 +35,7 @@ namespace DVLD.License.Local_Licenses
                     if (await LocalLicenseApplication.IssueLicenseAsync(Notes, ClsGlobal.CurrentUser.UserID))
                     {
                         MessageBox.Show("License issued successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        await ctrlDrivingLicenseApplicationInfo1.LoadApplicationDataAsync(LocalLicenseApplication.LocalDrivingLicenseApplicationID);
                         RefreshFormData?.Invoke();
 
                     }

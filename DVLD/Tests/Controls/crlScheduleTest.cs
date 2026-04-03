@@ -167,7 +167,7 @@ namespace DVLD.Tests.Controls
                     lblRetakeTestAppID.Text = CreationMode == EnCreationMode.RetakeTestSchedule ? TestAppointment.RetakeTestApplicationID.ToString() : lblRetakeTestAppID.Text;
                     MessageBox.Show("Test appointment saved successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
-                    return;
+                    this.ParentForm.Close();
                 }
                 else
                 {

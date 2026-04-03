@@ -20,6 +20,7 @@ namespace DVLD.Tests.Test_Appointments
         }
 
         private async void ScheduleTest_Load_1(object sender, EventArgs e) => await crlScheduleTest1.InitializeControl(LocalDrivingLicenseApplicationID, AppointmentID, Type);
+
         #endregion
     }
 }

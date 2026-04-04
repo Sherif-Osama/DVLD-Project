@@ -9,7 +9,7 @@ It allows managing people, drivers, licenses, applications, and scheduling drivi
 
 ---
 
-## 📸 Screenshots
+## 📸 Application Preview
 
 ### 🔐 Login Screen
 <img width="938" height="596" alt="Screenshot 2026-04-04 135741" src="https://github.com/user-attachments/assets/cad51951-06c9-4506-83b4-b0fb1cc28ed1" />
